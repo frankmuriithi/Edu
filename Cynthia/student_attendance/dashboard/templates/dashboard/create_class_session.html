@@ -1,0 +1,154 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Create Session{% endblock %}
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --light: #f9fafb;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+    
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f3f4f6;
+        color: var(--dark);
+        line-height: 1.6;
+    }
+    
+    .session-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    h2 {
+        color: var(--dark);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+        position: relative;
+        display: inline-block;
+    }
+    
+    h2::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 0;
+        width: 60px;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+    
+    .session-form {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        box-shadow: var(--card-shadow);
+    }
+    
+    .session-form p {
+        margin-bottom: 1.25rem;
+    }
+    
+    .session-form label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--dark);
+    }
+    
+    .session-form input[type="text"],
+    .session-form input[type="datetime-local"],
+    .session-form input[type="time"],
+    .session-form select,
+    .session-form textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+    }
+    
+    .session-form input:focus,
+    .session-form select:focus,
+    .session-form textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    .btn-create {
+        background-color: var(--success);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-create:hover {
+        background-color: #0d9c6e;
+        transform: translateY(-1px);
+    }
+    
+    .helptext {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--gray);
+        margin-top: 0.25rem;
+    }
+    
+    .errorlist {
+        color: var(--danger);
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+        padding-left: 0;
+        list-style: none;
+    }
+    
+    @media (max-width: 768px) {
+        .session-container {
+            padding: 15px;
+        }
+        
+        .session-form {
+            padding: 1.5rem;
+        }
+    }
+</style>
+
+<div class="session-container">
+    <h2>Create a Class Session</h2>
+    
+    <div class="session-form">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn-create">Create Session</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add date/time picker styling if needed
+        const dateInputs = document.querySelectorAll('input[type="datetime-local"], input[type="time"]');
+        dateInputs.forEach(input => {
+            input.style.cursor = 'pointer';
+        });
+    });
+</script>
+{% endblock %}

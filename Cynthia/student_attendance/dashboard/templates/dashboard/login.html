@@ -1,0 +1,156 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --light: #f9fafb;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+    
+    .login-container {
+        max-width: 500px;
+        margin: 2rem auto;
+        padding: 20px;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    h2 {
+        color: var(--dark);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        font-size: 1.75rem;
+        position: relative;
+        display: inline-block;
+        text-align: center;
+        width: 100%;
+    }
+    
+    h2::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+    
+    .login-card {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        box-shadow: var(--card-shadow);
+        margin-top: 1.5rem;
+    }
+    
+    .login-form p {
+        margin-bottom: 1.5rem;
+    }
+    
+    .login-form label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--dark);
+    }
+    
+    .login-form input[type="text"],
+    .login-form input[type="password"] {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+    }
+    
+    .login-form input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    .btn-login {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    
+    .btn-login:hover {
+        background-color: #4338ca;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .register-link {
+        text-align: center;
+        margin-top: 1.5rem;
+        color: var(--dark);
+    }
+    
+    .register-link a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+    
+    .register-link a:hover {
+        color: #4338ca;
+        text-decoration: underline;
+    }
+    
+    .errorlist {
+        color: var(--danger);
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+        padding-left: 0;
+        list-style: none;
+    }
+    
+    @media (max-width: 768px) {
+        .login-container {
+            padding: 15px;
+            margin: 1rem auto;
+        }
+        
+        .login-card {
+            padding: 1.5rem;
+        }
+    }
+</style>
+
+<div class="login-container">
+    <h2>Login</h2>
+    
+    <div class="login-card">
+        <form method="post" class="login-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn-login">Login</button>
+        </form>
+        
+        <p class="register-link">
+            Don't have an account? <a href="{% url 'register' %}">Register here</a>.
+        </p>
+    </div>
+</div>
+{% endblock %}
