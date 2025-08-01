@@ -1,0 +1,141 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --light: #f9fafb;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+    
+    .settings-container {
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 20px;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    h2 {
+        color: var(--dark);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+        position: relative;
+        display: inline-block;
+    }
+    
+    h2::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 0;
+        width: 60px;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+    
+    .settings-card {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        box-shadow: var(--card-shadow);
+    }
+    
+    .settings-form p {
+        margin-bottom: 1.5rem;
+    }
+    
+    .settings-form label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--dark);
+    }
+    
+    .settings-form input[type="text"],
+    .settings-form input[type="email"],
+    .settings-form input[type="password"],
+    .settings-form select,
+    .settings-form textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+    }
+    
+    .settings-form input:focus,
+    .settings-form select:focus,
+    .settings-form textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    .btn-update {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    
+    .btn-update:hover {
+        background-color: #4338ca;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .helptext {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--gray);
+        margin-top: 0.25rem;
+    }
+    
+    .errorlist {
+        color: var(--danger);
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+        padding-left: 0;
+        list-style: none;
+    }
+    
+    @media (max-width: 768px) {
+        .settings-container {
+            padding: 15px;
+        }
+        
+        .settings-card {
+            padding: 1.5rem;
+        }
+    }
+</style>
+
+<div class="settings-container">
+    <h2>Account Settings</h2>
+    
+    <div class="settings-card">
+        <form method="post" class="settings-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn-update">Update Account</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --light: #f9fafb;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+    
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f3f4f6;
+        color: var(--dark);
+        line-height: 1.6;
+    }
+    
+    h2 {
+        color: var(--dark);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+        position: relative;
+        display: inline-block;
+    }
+    
+    h2::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 0;
+        width: 60px;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+    
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        margin-top: 1.5rem;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    thead {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 500;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    td {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.9rem;
+    }
+    
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    tbody tr:hover {
+        background-color: var(--primary-light);
+    }
+    
+    .empty-message {
+        text-align: center;
+        padding: 2rem;
+        color: var(--gray);
+    }
+    
+    @media (max-width: 768px) {
+        th, td {
+            padding: 0.75rem;
+            font-size: 0.85rem;
+        }
+        
+        h2 {
+            font-size: 1.3rem;
+        }
+    }
+</style>
+
+<div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+    <h2>Students Who Checked In</h2>
+    
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Reg No</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in checked_in_students %}
+                    <tr>
+                        <td>{{ student.username }}</td>
+                        <td>{{ student.email }}</td>
+                        <td>{{ student.profile.registration_number }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="3" class="empty-message">No students have checked in yet.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

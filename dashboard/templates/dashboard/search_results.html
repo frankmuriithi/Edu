@@ -1,0 +1,15 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+  <h2>Search Results for "{{ query }}"</h2>
+
+  {% if users %}
+    <ul>
+      {% for user in users %}
+        <li>{{ user.username }} - {{ user.email }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No results found.</p>
+  {% endif %}
+{% endblock %}

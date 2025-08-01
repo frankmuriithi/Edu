@@ -1,0 +1,204 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Reports{% endblock %}
+{% block page_title %}Attendance Reports{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
+    
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --light: #f9fafb;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+    
+    .attendance-section {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 2rem;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .section-title {
+        color: var(--dark);
+        font-weight: 600;
+        font-size: 1.25rem;
+        margin: 0;
+        position: relative;
+    }
+    
+    .section-title::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 0;
+        width: 60px;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+    
+    .btn-success {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.75rem 1.5rem;
+        background-color: var(--success);
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-success:hover {
+        background-color: #0d9c6e;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .btn-success i {
+        margin-right: 8px;
+    }
+    
+    .table-responsive {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    thead {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 500;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    td {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.9rem;
+    }
+    
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    tbody tr:hover {
+        background-color: var(--primary-light);
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-align: center;
+        min-width: 60px;
+    }
+    
+    .status-present {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: var(--success);
+    }
+    
+    .status-absent {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--gray);
+    }
+    
+    @media (max-width: 768px) {
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .btn-success {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            font-size: 0.85rem;
+        }
+    }
+</style>
+
+<div class="attendance-section">
+    <div class="section-header">
+        <h2 class="section-title">Course Attendance Summary</h2>
+        <a href="{% url 'export_report' %}" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Export Report
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Course</th>
+                    <th>Sessions Attended</th>
+                    <th>Total Sessions</th>
+                    <th>Attendance %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in attendance_data %}
+                    <tr>
+                        <td>{{ record.course }}</td>
+                        <td>{{ record.attended }}</td>
+                        <td>{{ record.total }}</td>
+                        <td>
+                            <span class="status-badge {% if record.percentage >= 75 %}status-present{% else %}status-absent{% endif %}">
+                                {{ record.percentage }}%
+                            </span>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4" class="empty-state">No attendance data available.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

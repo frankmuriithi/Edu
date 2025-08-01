@@ -1,0 +1,148 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Send Notification{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --light: #f9fafb;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+    
+    .notification-form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    h2 {
+        color: var(--dark);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+        position: relative;
+        display: inline-block;
+    }
+    
+    h2::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 0;
+        width: 60px;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+    
+    .notification-form {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        box-shadow: var(--card-shadow);
+    }
+    
+    .notification-form p {
+        margin-bottom: 1.25rem;
+    }
+    
+    .notification-form label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--dark);
+    }
+    
+    .notification-form input[type="text"],
+    .notification-form select,
+    .notification-form textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+    }
+    
+    .notification-form textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+    
+    .notification-form input:focus,
+    .notification-form select:focus,
+    .notification-form textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    .btn-send {
+        background-color: var(--success);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-send:hover {
+        background-color: #0d9c6e;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .helptext {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--gray);
+        margin-top: 0.25rem;
+    }
+    
+    .errorlist {
+        color: var(--danger);
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+        padding-left: 0;
+        list-style: none;
+    }
+    
+    @media (max-width: 768px) {
+        .notification-form-container {
+            padding: 15px;
+        }
+        
+        .notification-form {
+            padding: 1.5rem;
+        }
+    }
+</style>
+
+<div class="notification-form-container">
+    <h2>Send Notification</h2>
+    
+    <div class="notification-form">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn-send">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                    <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083l6-15Zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471-.47 1.178Z"/>
+                </svg>
+                Send Notification
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

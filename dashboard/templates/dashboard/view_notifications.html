@@ -1,0 +1,147 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --light: #f9fafb;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+    
+    .notifications-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    h2 {
+        color: var(--dark);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+        position: relative;
+        display: inline-block;
+    }
+    
+    h2::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 0;
+        width: 60px;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+    
+    .btn-send {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.75rem 1.5rem;
+        background-color: var(--success);
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 500;
+        margin-bottom: 1.5rem;
+        transition: all 0.2s;
+    }
+    
+    .btn-send:hover {
+        background-color: #0d9c6e;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .notifications-list {
+        background: white;
+        border-radius: 8px;
+        padding: 0;
+        box-shadow: var(--card-shadow);
+        list-style: none;
+    }
+    
+    .notification-item {
+        padding: 1.25rem;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background-color 0.2s;
+    }
+    
+    .notification-item:last-child {
+        border-bottom: none;
+    }
+    
+    .notification-item:hover {
+        background-color: var(--primary-light);
+    }
+    
+    .notification-sender {
+        font-weight: 600;
+        color: var(--primary);
+        margin-right: 0.5rem;
+    }
+    
+    .notification-message {
+        color: var(--dark);
+        margin-right: 0.5rem;
+    }
+    
+    .notification-time {
+        color: var(--gray);
+        font-size: 0.85rem;
+        font-style: italic;
+    }
+    
+    .empty-state {
+        padding: 2rem;
+        text-align: center;
+        color: var(--gray);
+    }
+    
+    @media (max-width: 768px) {
+        .notifications-container {
+            padding: 15px;
+        }
+        
+        .notification-item {
+            padding: 1rem;
+        }
+    }
+</style>
+
+<div class="notifications-container">
+    <h2>Your Notifications</h2>
+
+    {% if request.user.profile.role == 'TEACHER' %}
+        <a href="{% url 'send_notification' %}" class="btn-send">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+            </svg>
+            Send Notification
+        </a>
+    {% endif %}
+    
+    <ul class="notifications-list">
+        {% for notif in notifications %}
+            <li class="notification-item">
+                <span class="notification-sender">{{ notif.sender.username }}</span>
+                <span class="notification-message">{{ notif.message }}</span>
+                <span class="notification-time">({{ notif.timestamp|date:"SHORT_DATETIME_FORMAT" }})</span>
+            </li>
+        {% empty %}
+            <li class="empty-state">No notifications.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

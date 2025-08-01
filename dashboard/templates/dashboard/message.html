@@ -1,0 +1,189 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Messages{% endblock %}
+{% block page_title %}Messages{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --light: #f9fafb;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+    
+    .attendance-section {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .section-header {
+        margin-bottom: 1.5rem;
+    }
+    
+    .section-title {
+        color: var(--dark);
+        font-weight: 600;
+        font-size: 1.5rem;
+        margin: 0;
+        position: relative;
+        display: inline-block;
+    }
+    
+    .section-title::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 0;
+        width: 60px;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+    
+    .messages-list {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 1.5rem;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    
+    .message-item {
+        margin-bottom: 1.5rem;
+        padding: 15px;
+        border-radius: 8px;
+        max-width: 75%;
+    }
+    
+    .message-item.sent {
+        background-color: var(--primary-light);
+        margin-left: auto;
+        border-bottom-right-radius: 0;
+    }
+    
+    .message-item.received {
+        background-color: #f3f4f6;
+        margin-right: auto;
+        border-bottom-left-radius: 0;
+    }
+    
+    .message-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+    }
+    
+    .message-header strong {
+        color: var(--dark);
+        font-weight: 600;
+    }
+    
+    .timestamp {
+        color: var(--gray);
+        font-size: 0.75rem;
+    }
+    
+    .message-content {
+        margin: 0;
+        color: var(--dark);
+        line-height: 1.5;
+    }
+    
+    .message-form {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: var(--card-shadow);
+    }
+    
+    .message-form form p {
+        margin-bottom: 1rem;
+    }
+    
+    .message-form textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-family: 'Inter', sans-serif;
+        resize: vertical;
+        min-height: 100px;
+        transition: border-color 0.2s;
+    }
+    
+    .message-form textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .btn-primary:hover {
+        background-color: #4338ca;
+    }
+    
+    @media (max-width: 768px) {
+        .message-item {
+            max-width: 85%;
+        }
+        
+        .attendance-section {
+            padding: 15px;
+        }
+    }
+</style>
+
+<div class="attendance-section">
+    <div class="section-header">
+        <h2 class="section-title">Messages</h2>
+    </div>
+
+    <div class="messages-list">
+        {% for msg in messages %}
+        <div class="message-item {% if msg.sender == request.user %}sent{% else %}received{% endif %}">
+            <div class="message-header">
+                <strong>{{ msg.sender.username }}</strong>
+                <span class="timestamp">{{ msg.timestamp|date:"M d, H:i" }}</span>
+            </div>
+            <p class="message-content">{{ msg.content }}</p>
+        </div>
+        {% empty %}
+        <div class="empty-state" style="text-align: center; color: var(--gray); padding: 20px;">
+            No messages yet. Start a conversation!
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="message-form">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
