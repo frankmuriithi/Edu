@@ -56,7 +56,7 @@ class RegistrationForm(forms.ModelForm):
 
         # If not student, registration number should be empty
         if role in ['TEACHER', 'ADMIN']:
-            return ''  # Return empty string
+            return None  # Return None
 
         return reg_no
 
@@ -75,7 +75,7 @@ class RegistrationForm(forms.ModelForm):
         if profile.role == 'STUDENT':
             profile.registration_number = self.cleaned_data['registration_number']
         else:
-            profile.registration_number = ''  # or None, depending on model definition
+            profile.registration_number = None  # or None, depending on model definition
 
         profile.save()
 
