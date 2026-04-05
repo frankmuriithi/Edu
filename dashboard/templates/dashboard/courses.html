@@ -136,10 +136,10 @@
                     <td>{{ course.code }}</td>
                     <td>{{ course.name }}</td>
                     <td>
-                    {% if course.teacher %}
-                        {{ course.teacher.get_full_name|default:course.teacher.username }}
+                    {% if course.lecturer %}
+                        {{ course.lecturer.get_full_name|default:course.lecturer.username }}
                     {% else %}
-                       <span class="text-muted">No teacher assigned</span> 
+                       <span class="text-muted">No lecturer assigned</span> 
                     {% endif %}   
                     </td>
                 </tr>

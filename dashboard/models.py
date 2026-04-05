@@ -9,7 +9,7 @@ from django.dispatch import receiver
 class Profile(models.Model):
     ROLE_CHOICES = [
         ('STUDENT', 'Student'),
-        ('TEACHER', 'Teacher'),
+        ('LECTURER', 'Lecturer'),
         ('ADMIN', 'Administrator'),
     ]
     
@@ -43,8 +43,8 @@ class Course(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=10, unique=True)
     description = models.TextField(blank=True)
-    teacher = models.ForeignKey(
-        User, on_delete=models.CASCADE, null=True, blank=True, limit_choices_to={'profile__role': 'TEACHER'}, related_name='courses_taught'
+    lecturer = models.ForeignKey(
+        User, on_delete=models.CASCADE, null=True, blank=True, limit_choices_to={'profile__role': 'LECTURER'}, related_name='courses_taught'
     )
     students = models.ManyToManyField(
         User, related_name='courses_enrolled', blank=True,

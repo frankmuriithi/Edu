@@ -55,7 +55,7 @@ class RegistrationForm(forms.ModelForm):
             raise forms.ValidationError("Registration number is required for students.")
 
         # If not student, registration number should be empty
-        if role in ['TEACHER', 'ADMIN']:
+        if role in ['LECTURER', 'ADMIN']:
             return None  # Return None
 
         return reg_no
@@ -95,9 +95,9 @@ class ClassSessionForm(forms.ModelForm):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
-            teacher_courses = Course.objects.filter(teacher=user)
-            self.fields['course'].queryset = teacher_courses
-            if not teacher_courses.exists():
+            lecturer_courses = Course.objects.filter(lecturer=user)
+            self.fields['course'].queryset = lecturer_courses
+            if not lecturer_courses.exists():
                 self.fields['course'].help_text = "⚠️ You are not assigned to any courses."
         except AttributeError:
             self.fields['course'].queryset = Course.objects.none()
@@ -126,7 +126,7 @@ class NotificationForm(forms.ModelForm):
             role = sender.profile.role
             if role == 'ADMIN':
                 self.fields['recipient'].queryset = User.objects.exclude(id=sender.id)
-            elif role == 'TEACHER':
+            elif role == 'LECTURER':
                 self.fields['recipient'].queryset = User.objects.filter(profile__role='STUDENT')
             else:
                 self.fields['recipient'].queryset = User.objects.none()

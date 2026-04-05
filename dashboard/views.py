@@ -20,8 +20,8 @@ def dashboard(request):
     today = date.today()
     role = request.user.profile.role
 
-    if role == 'TEACHER':
-        today_sessions = ClassSession.objects.filter(course__teacher=request.user, date=today)
+    if role == 'LECTURER':
+        today_sessions = ClassSession.objects.filter(course__lecturer=request.user, date=today)
     elif role == 'STUDENT':
         today_sessions = ClassSession.objects.filter(date=today, course__students=request.user)
     else:
@@ -44,8 +44,8 @@ def dashboard(request):
         present_count = user_attendances.filter(status='present').count()
         overall_attendance = round((present_count / user_attendances.count()) * 100) if user_attendances.count() > 0 else 0
 
-    elif role == 'TEACHER':
-        all_courses = Course.objects.filter(teacher=request.user)
+    elif role == 'LECTURER':
+        all_courses = Course.objects.filter(lecturer=request.user)
         all_sessions = ClassSession.objects.filter(course__in=all_courses)
 
         total_classes = all_sessions.count()
@@ -102,7 +102,7 @@ def dashboard(request):
 
     return render(request, 'dashboard/dashboard.html', {
         'session_data': session_data,
-        'total_classes': total_classes if role == 'TEACHER' else ClassSession.objects.count(),
+        'total_classes': total_classes if role == 'LECTURER' else ClassSession.objects.count(),
         'overall_attendance': overall_attendance,
         'warning_classes': warning_classes,
         'unread_notifications': unread_notifications,
@@ -139,7 +139,7 @@ def search_results(request):
 
 @login_required
 def teacher_students_checked_in(request):
-    if request.user.profile.role != 'TEACHER':
+    if request.user.profile.role != 'LECTURER':
         return HttpResponse("Unauthorized", status=403)
 
     courses = request.user.courses_taught.all()
@@ -164,8 +164,8 @@ def attendance_list(request):
     role = request.user.profile.role
     if role == 'STUDENT':
         courses = request.user.courses_enrolled.all()
-    elif role == 'TEACHER':
-        courses = Course.objects.filter(teacher=request.user)
+    elif role == 'LECTURER':
+        courses = Course.objects.filter(lecturer=request.user)
     else:
         courses = Course.objects.all()
 
@@ -230,7 +230,7 @@ def manual_checkin(request):
 
 @login_required
 def create_class_session(request):
-    if request.user.profile.role != 'TEACHER':
+    if request.user.profile.role != 'LECTURER':
         return redirect('dashboard')
 
     if request.method == 'POST':
@@ -250,7 +250,7 @@ def create_class_session(request):
 
 # Helper to check if user is teacher
 def is_teacher(user):
-    return user.profile.role == 'TEACHER'
+    return user.profile.role == 'LECTURER'
 
 @user_passes_test(is_teacher)
 @login_required
@@ -309,8 +309,8 @@ def courses(request):
     role = request.user.profile.role
     if role == 'STUDENT':
         courses = request.user.courses_enrolled.all()
-    elif role == 'TEACHER':
-        courses = Course.objects.filter(teacher=request.user)
+    elif role == 'LECTURER':
+        courses = Course.objects.filter(lecturer=request.user)
     else:
         courses = Course.objects.all()
 
@@ -339,8 +339,8 @@ def reports(request):
 
         return render(request, 'dashboard/reports.html', {'attendance_data': attendance_data})
 
-    elif role == 'TEACHER':
-        courses = Course.objects.filter(teacher=request.user)
+    elif role == 'LECTURER':
+        courses = Course.objects.filter(lecturer=request.user)
         for course in courses:
             sessions = ClassSession.objects.filter(course=course).order_by('-date')
             for session in sessions:
@@ -382,8 +382,8 @@ def export_reports_excel(request):
 
     if role == 'STUDENT':
         courses = request.user.courses_enrolled.all()
-    elif role == 'TEACHER':
-        courses = Course.objects.filter(teacher=request.user)
+    elif role == 'LECTURER':
+        courses = Course.objects.filter(lecturer=request.user)
     else:
         courses = Course.objects.all()
 
@@ -422,7 +422,7 @@ def export_reports_excel(request):
 
 @login_required
 def export_teacher_report_excel(request):
-    if request.user.profile.role != 'TEACHER':
+    if request.user.profile.role != 'LECTURER':
         return HttpResponse("Unauthorized", status=403)
 
     # Create workbook and sheet
@@ -504,8 +504,8 @@ def export_attendance_excel(request):
     role = request.user.profile.role
     if role == 'STUDENT':
         attendances = Attendance.objects.filter(student=request.user)
-    elif role == 'TEACHER':
-        attendances = Attendance.objects.filter(course__teacher=request.user)
+    elif role == 'LECTURER':
+        attendances = Attendance.objects.filter(course__lecturer=request.user)
     else:
         attendances = Attendance.objects.all()
 

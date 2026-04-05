@@ -348,7 +348,7 @@
     <div class="section-header">
         <h2 class="section-title">Today's Check-in</h2>
         <div class="section-actions">
-            {% if request.user.profile.role == 'TEACHER' %}
+            {% if request.user.profile.role == 'LECTURER' %}
             <button id="openCheckinModal">
                 <i class="fas fa-plus"></i> Manual Check-in
             </button>
@@ -380,7 +380,7 @@
                 <th>Time</th>
                 <th>Status</th>
                 <th>Lecturer</th>
-                {% if request.user.profile.role == 'TEACHER' %}
+                {% if request.user.profile.role == 'LECTURER' %}
                 <th>Actions</th>
                 {% endif %}
             </tr>
@@ -407,8 +407,8 @@
                             {% endif %}
                         </td>
 
-                        <td>{{ session.course.teacher.username }}</td>
-                        {% if request.user.profile.role == 'TEACHER' %}
+                        <td>{{ session.course.lecturer.username }}</td>
+                        {% if request.user.profile.role == 'LECTURER' %}
                         <td>
                             <a href="{% url 'edit_session' session_id=session.id %}" class="action-btn edit" title="Edit">
                                 <i class="fas fa-edit"></i>
