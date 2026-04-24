@@ -349,9 +349,9 @@
         <h2 class="section-title">Today's Check-in</h2>
         <div class="section-actions">
             {% if request.user.profile.role == 'LECTURER' %}
-            <button id="openCheckinModal">
-                <i class="fas fa-plus"></i> Manual Check-in
-            </button>
+            <a href="{% url 'manual_checkin' %}" class="checkin-btn">
+    Manual Check-in
+</a>
             <a href="{% url 'create_session' %}" class="btn btn-primary" style="margin-left: 10px;">
                 <i class="fas fa-calendar-plus"></i> Create Class Session
             </a>

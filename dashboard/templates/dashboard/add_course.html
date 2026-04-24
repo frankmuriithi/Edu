@@ -1,0 +1,184 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Add Course{% endblock %}
+{% block page_title %}Add Course{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+
+    .attendance-section {
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .section-title {
+        color: var(--dark);
+        font-weight: 600;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        display: inline-block;
+    }
+
+    .section-title::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        left: 0;
+        width: 50px;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+
+    .card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: var(--card-shadow);
+        margin-top: 20px;
+        transition: 0.2s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+    }
+
+    label {
+        font-weight: 500;
+        display: block;
+        margin-top: 10px;
+        color: var(--dark);
+    }
+
+    input, textarea {
+        width: 100%;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        margin-top: 5px;
+        margin-bottom: 12px;
+        transition: 0.2s ease;
+    }
+
+    input:focus, textarea:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 2px var(--primary-light);
+    }
+
+    /* Students checkbox styling */
+    .checkbox-group {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #eee;
+        padding: 10px;
+        border-radius: 6px;
+        background: #fafafa;
+    }
+
+    .checkbox-group label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 400;
+        margin-bottom: 6px;
+        cursor: pointer;
+    }
+
+    .checkbox-group input {
+        width: auto;
+        margin: 0;
+    }
+
+    .btn {
+        padding: 10px 14px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: 0.2s ease;
+    }
+
+    .btn-add {
+        background: var(--primary);
+        color: white;
+        margin-top: 10px;
+    }
+
+    .btn-add:hover {
+        background: #4338ca;
+        transform: scale(1.02);
+    }
+
+    .error-box {
+        background: #fee2e2;
+        color: #b91c1c;
+        padding: 10px;
+        border-radius: 6px;
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-top: 10px;
+        text-decoration: none;
+        color: var(--primary);
+        font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="attendance-section">
+
+    <h2 class="section-title">Create New Course</h2>
+
+    <div class="card">
+        <form method="POST">
+            {% csrf_token %}
+
+            <label>Course Name</label>
+            {{ form.name }}
+
+            <label>Course Code</label>
+            {{ form.code }}
+
+            <label>Description</label>
+            {{ form.description }}
+
+            <label>Select Students (optional)</label>
+            <div class="checkbox-group">
+                {{ form.students }}
+            </div>
+
+            <button type="submit" class="btn btn-add">+ Create Course</button>
+        </form>
+
+        {% if form.errors %}
+            <div class="error-box">
+                {{ form.errors }}
+            </div>
+        {% endif %}
+
+        <a href="{% url 'courses' %}" class="back-link">← Back to Courses</a>
+    </div>
+
+</div>
+{% endblock %}

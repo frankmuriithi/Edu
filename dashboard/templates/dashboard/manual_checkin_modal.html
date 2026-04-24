@@ -1,76 +1,109 @@
 {% extends "dashboard/base.html" %}
+
 {% block title %}Manual Check-in{% endblock %}
+{% block page_title %}Manual Check-in{% endblock %}
 
 {% block content %}
-<div class="manual-checkin-container">
-  <h2>Manual Check-in</h2>
 
-  {% if form.errors %}
-    <div class="form-errors" style="background: #ffe6e6; padding: 10px; border: 1px solid red; border-radius: 5px;">
-      <ul>
-        {% for field in form %}
-          {% for error in field.errors %}
-            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-          {% endfor %}
-        {% endfor %}
-      </ul>
-    </div>
-  {% endif %}
+<div class="attendance-section fade-in">
 
-  <form method="post" action="{% url 'manual_checkin' %}">
-    {% csrf_token %}
-    
-    <div class="form-group">
-      {{ form.student.label_tag }} {{ form.student }}
-      {% if form.student.help_text %}<small>{{ form.student.help_text }}</small>{% endif %}
+    <div class="section-header">
+        <h3 class="section-title">Manual Check-in</h3>
     </div>
 
-    <div class="form-group">
-      {{ form.course.label_tag }} {{ form.course }}
-      {% if form.course.help_text %}<small>{{ form.course.help_text }}</small>{% endif %}
-    </div>
+    {% if form.errors %}
+    <div style="background:#ffe6e6;padding:10px;border:1px solid red;border-radius:5px;margin-bottom:15px;">
+        <ul style="margin:0;padding-left:20px;">
+            {% for field in form %}
+                {% for error in field.errors %}
+                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
 
-    <div class="form-group">
-      {{ form.date.label_tag }} {{ form.date }}
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
     </div>
+    {% endif %}
 
-    <div class="form-group">
-      {{ form.time.label_tag }} {{ form.time }}
-    </div>
+    <form method="post" action="{% url 'manual_checkin' %}" id="checkinForm">
+        {% csrf_token %}
 
-    <div class="form-group">
-      {{ form.status.label_tag }} {{ form.status }}
-    </div>
+        <!-- COURSE -->
+        <div class="form-group">
+            {{ form.course.label_tag }}
+            {{ form.course }}
+        </div>
 
-    <div class="form-group">
-      {{ form.reason.label_tag }} {{ form.reason }}
-    </div>
+        <!-- STUDENT -->
+        <div class="form-group">
+            {{ form.student.label_tag }}
+            {{ form.student }}
+        </div>
 
-    <button type="submit" class="btn btn-primary">Submit</button>
-  </form>
+        <!-- DATE -->
+        <div class="form-group">
+            {{ form.date.label_tag }}
+            {{ form.date }}
+        </div>
+
+        <!-- TIME -->
+        <div class="form-group">
+            {{ form.time.label_tag }}
+            {{ form.time }}
+        </div>
+
+        <!-- STATUS -->
+        <div class="form-group">
+            {{ form.status.label_tag }}
+            {{ form.status }}
+        </div>
+
+        <!-- REASON -->
+        <div class="form-group" id="reasonGroup" style="display:none;">
+            {{ form.reason.label_tag }}
+            {{ form.reason }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Submit Check-in
+        </button>
+    </form>
+
 </div>
 
-<style>
-  .manual-checkin-container {
-    max-width: 600px;
-    margin: 2rem auto;
-    background: #fff;
-    padding: 2rem;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
+<script>
+document.addEventListener("DOMContentLoaded", function () {
 
-  .btn-primary {
-    background: #4CAF50;
-    color: white;
-    padding: 0.5rem 1.5rem;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
+    // 🔥 Reload form when course changes (to load students)
+    const courseField = document.getElementById('id_course');
+    if (courseField) {
+        courseField.addEventListener('change', function () {
+            this.form.submit();
+        });
+    }
 
-  .btn-primary:hover {
-    background: #45a049;
-  }
-</style>
+    // 🔥 Show/hide reason field when absent is selected
+    const statusField = document.getElementById('id_status');
+    const reasonGroup = document.getElementById('reasonGroup');
+
+    function toggleReason() {
+        if (statusField && reasonGroup) {
+            if (statusField.value.toLowerCase() === 'absent') {
+                reasonGroup.style.display = 'block';
+            } else {
+                reasonGroup.style.display = 'none';
+            }
+        }
+    }
+
+    if (statusField) {
+        statusField.addEventListener('change', toggleReason);
+        toggleReason(); // run on load
+    }
+
+});
+</script>
+
 {% endblock %}

@@ -65,9 +65,7 @@
         color: var(--dark);
     }
     
-    .register-form input[type="text"],
-    .register-form input[type="email"],
-    .register-form input[type="password"],
+    .register-form input,
     .register-form select {
         width: 100%;
         padding: 0.75rem;
@@ -88,60 +86,39 @@
         background-color: var(--success);
         color: white;
         border: none;
-        padding: 0.75rem 1.5rem;
+        padding: 0.75rem;
         border-radius: 6px;
         font-weight: 500;
         cursor: pointer;
-        transition: all 0.2s;
         width: 100%;
-        margin-top: 0.5rem;
+        transition: all 0.2s;
     }
     
     .btn-register:hover {
         background-color: #0d9c6e;
         transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     
     .login-link {
         text-align: center;
         margin-top: 1.5rem;
-        color: var(--dark);
     }
     
     .login-link a {
         color: var(--primary);
         text-decoration: none;
         font-weight: 500;
-        transition: color 0.2s;
     }
     
     .login-link a:hover {
-        color: #4338ca;
         text-decoration: underline;
     }
     
     .errorlist {
         color: var(--danger);
         font-size: 0.9rem;
-        margin-top: 0.25rem;
-        padding-left: 0;
         list-style: none;
-    }
-    
-    #reg_number_group {
-        transition: all 0.3s ease;
-    }
-    
-    @media (max-width: 768px) {
-        .register-container {
-            padding: 15px;
-            margin: 1rem auto;
-        }
-        
-        .register-card {
-            padding: 1.5rem;
-        }
+        padding-left: 0;
     }
 </style>
 
@@ -151,6 +128,7 @@
     <div class="register-card">
         <form method="post" class="register-form">
             {% csrf_token %}
+
             <p>
                 {{ form.username.label_tag }}
                 {{ form.username }}
@@ -175,11 +153,21 @@
                 {{ form.role.errors }}
             </p>
 
-            <div id="reg_number_group">
+            <!-- STUDENT FIELD -->
+            <div id="registration_group">
                 <p>
-                    {{ form.registration_number.label_tag }}
+                    <label for="id_registration_number">Registration Number</label>
                     {{ form.registration_number }}
                     {{ form.registration_number.errors }}
+                </p>
+            </div>
+
+            <!-- LECTURER FIELD -->
+            <div id="staff_group" style="display:none;">
+                <p>
+                    <label for="id_staff_number">Staff Number</label>
+                    {{ form.staff_number }}
+                    {{ form.staff_number.errors }}
                 </p>
             </div>
 
@@ -195,22 +183,42 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const roleField = document.getElementById('id_role');
-        const regNumberGroup = document.getElementById('reg_number_group');
 
-        function toggleRegNumber() {
+        const regGroup = document.getElementById('registration_group');
+        const staffGroup = document.getElementById('staff_group');
+
+        const regInput = document.getElementById('id_registration_number');
+        const staffInput = document.getElementById('id_staff_number');
+
+        function toggleFields() {
             const role = roleField.value;
+
             if (role === 'LECTURER' || role === 'ADMIN') {
-                regNumberGroup.style.display = 'none';
+                regGroup.style.display = 'none';
+                staffGroup.style.display = 'block';
+
+                regInput.required = false;
+                staffInput.required = true;
+
+                regInput.value = ''; // prevent accidental submission
+
             } else {
-                regNumberGroup.style.display = 'block';
+                regGroup.style.display = 'block';
+                staffGroup.style.display = 'none';
+
+                regInput.required = true;
+                staffInput.required = false;
+
+                staffInput.value = '';
             }
         }
 
         // Run on load
-        toggleRegNumber();
+        toggleFields();
 
         // Run on change
-        roleField.addEventListener('change', toggleRegNumber);
+        roleField.addEventListener('change', toggleFields);
     });
 </script>
+
 {% endblock %}

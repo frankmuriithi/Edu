@@ -29,9 +29,7 @@
         margin-bottom: 1.5rem;
         font-size: 1.75rem;
         position: relative;
-        display: inline-block;
         text-align: center;
-        width: 100%;
     }
     
     h2::after {
@@ -51,11 +49,6 @@
         border-radius: 8px;
         padding: 2rem;
         box-shadow: var(--card-shadow);
-        margin-top: 1.5rem;
-    }
-    
-    .login-form p {
-        margin-bottom: 1.5rem;
     }
     
     .login-form label {
@@ -65,17 +58,17 @@
         color: var(--dark);
     }
     
-    .login-form input[type="text"],
-    .login-form input[type="password"] {
+    .login-form input,
+    .login-form select {
         width: 100%;
         padding: 0.75rem;
         border: 1px solid #e2e8f0;
         border-radius: 6px;
-        font-family: 'Inter', sans-serif;
-        transition: all 0.2s;
+        margin-bottom: 1rem;
     }
     
-    .login-form input:focus {
+    .login-form input:focus,
+    .login-form select:focus {
         outline: none;
         border-color: var(--primary);
         box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
@@ -85,21 +78,16 @@
         background-color: var(--primary);
         color: white;
         border: none;
-        padding: 0.75rem 1.5rem;
+        padding: 0.75rem;
         border-radius: 6px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
         width: 100%;
-        margin-top: 0.5rem;
+        cursor: pointer;
     }
     
     .btn-login:hover {
         background-color: #4338ca;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-    
+
     .register-link {
         text-align: center;
         margin-top: 1.5rem;
@@ -110,31 +98,14 @@
         color: var(--primary);
         text-decoration: none;
         font-weight: 500;
-        transition: color 0.2s;
     }
     
     .register-link a:hover {
-        color: #4338ca;
         text-decoration: underline;
     }
-    
-    .errorlist {
-        color: var(--danger);
-        font-size: 0.9rem;
-        margin-top: 0.25rem;
-        padding-left: 0;
-        list-style: none;
-    }
-    
-    @media (max-width: 768px) {
-        .login-container {
-            padding: 15px;
-            margin: 1rem auto;
-        }
-        
-        .login-card {
-            padding: 1.5rem;
-        }
+
+    .hidden {
+        display: none;
     }
 </style>
 
@@ -144,13 +115,63 @@
     <div class="login-card">
         <form method="post" class="login-form">
             {% csrf_token %}
-            {{ form.as_p }}
+
+            <label>Username</label>
+            <input type="text" name="username" required>
+
+            <label>Password</label>
+            <input type="password" name="password" required>
+
+            <label>Role</label>
+            <select name="role" id="role" required>
+                <option value="">Select Role</option>
+                <option value="STUDENT">Student</option>
+                <option value="LECTURER">Lecturer</option>
+            </select>
+
+            <!-- Registration Number -->
+            <div id="reg_group">
+                <label>Registration Number</label>
+                <input type="text" name="registration_number">
+            </div>
+
+            <!-- Staff Number -->
+            <div id="staff_group" class="hidden">
+                <label>Staff Number</label>
+                <input type="text" name="staff_number">
+            </div>
+
             <button type="submit" class="btn-login">Login</button>
         </form>
-        
+
+        <!-- ✅ RESTORED REGISTER LINK -->
         <p class="register-link">
             Don't have an account? <a href="{% url 'register' %}">Register here</a>.
         </p>
+
     </div>
 </div>
+
+<script>
+    const role = document.getElementById('role');
+    const regGroup = document.getElementById('reg_group');
+    const staffGroup = document.getElementById('staff_group');
+
+    function toggleFields() {
+        if (role.value === 'LECTURER') {
+            regGroup.style.display = 'none';
+            staffGroup.style.display = 'block';
+        } else if (role.value === 'STUDENT') {
+            regGroup.style.display = 'block';
+            staffGroup.style.display = 'none';
+        } else {
+            regGroup.style.display = 'none';
+            staffGroup.style.display = 'none';
+        }
+    }
+
+    toggleFields();
+    role.addEventListener('change', toggleFields);
+</script>
+
 {% endblock %}

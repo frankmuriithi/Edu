@@ -15,18 +15,18 @@ class Profile(models.Model):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     registration_number = models.CharField(max_length=30, unique=True, null=True, blank=True)
+    staff_number = models.CharField(max_length=30, unique=True, null=True, blank=True)  # For lecturers
     bio = models.TextField(max_length=500, blank=True)
     location = models.CharField(max_length=30, blank=True)
     birth_date = models.DateField(null=True, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='STUDENT')
-    
-    # ✅ TEMPORARY FIELD TO FORCE MIGRATION
-    last_updated = models.DateTimeField(auto_now=True)  # you may keep this for tracking profile changes
+    last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.user.username
 
-# ✅ Automatically create or update profile when User is created or saved
+
+# Automatically create or update profile when User is created or saved
 @receiver(post_save, sender=User)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
@@ -44,7 +44,9 @@ class Course(models.Model):
     code = models.CharField(max_length=10, unique=True)
     description = models.TextField(blank=True)
     lecturer = models.ForeignKey(
-        User, on_delete=models.CASCADE, null=True, blank=True, limit_choices_to={'profile__role': 'LECTURER'}, related_name='courses_taught'
+        User, on_delete=models.CASCADE, null=True, blank=True,
+        limit_choices_to={'profile__role': 'LECTURER'},
+        related_name='courses_taught'
     )
     students = models.ManyToManyField(
         User, related_name='courses_enrolled', blank=True,
@@ -72,15 +74,13 @@ class ClassSession(models.Model):
         return f"{self.course} on {self.date} at {self.start_time}"
 
 
-# -------------------------
-# Attendance Model (FIXED)
-# -------------------------
 class Attendance(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
         ('late', 'Late'),
         ('absent', 'Absent'),
     ]
+
     student = models.ForeignKey(User, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     session = models.ForeignKey(ClassSession, on_delete=models.CASCADE, null=True, blank=True)
@@ -88,18 +88,27 @@ class Attendance(models.Model):
     time = models.TimeField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES)
     reason = models.TextField(blank=True, null=True)
+
+    # ✅ NEW FIELD
+    marked_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="marked_attendance"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('student', 'course', 'date', 'time')
+        unique_together = ('student', 'session')
         ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.student} - {self.course.name} on {self.date}: {self.status}"
-
-
-
+# -------------------------
 # Notification Model
+# -------------------------
 class Notification(models.Model):
     sender = models.ForeignKey(User, related_name='sent_notifications', on_delete=models.CASCADE)
     recipient = models.ForeignKey(User, related_name='received_notifications', on_delete=models.CASCADE, null=True)
@@ -111,11 +120,14 @@ class Notification(models.Model):
         return f"From {self.sender} to {self.recipient} at {self.timestamp}"
 
 
+# -------------------------
+# Message Model
+# -------------------------
 class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    
+
     def __str__(self):
         return f'From {self.sender} to {self.recipient} at {self.timestamp}'

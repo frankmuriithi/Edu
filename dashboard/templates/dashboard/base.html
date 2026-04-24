@@ -69,8 +69,8 @@
         }
 
         .logo img {
-            width: 40px;
-            height: 40px;
+            width: 70px;
+            height: 70px;
             margin-right: 10px;
         }
 
@@ -911,7 +911,7 @@
                     <i class="fas fa-book"></i>
                     <span>Courses</span>
                 </a>
-                {% if request.user.profile.role == 'TEACHER' %}
+                {% if request.user.profile.role == 'LECTURER' %}
                 <a href="{% url 'teacher_students_checked_in' %}" class="menu-item">
                     <i class="fas fa-users"></i>
                     <span>Students</span>
@@ -965,7 +965,7 @@
                         </a>
                     </div>
                     <div class="user-dropdown">
-                        <img src="https://via.placeholder.com/35" alt="User">
+                        <img src="{% static 'dashboard/profile.png' %}" alt="User">
                         <i class="fas fa-chevron-down"></i>
                         <div class="user-dropdown-menu" style="position:absolute; top:50px; right:0; background:white; border-radius:5px; box-shadow:0 2px 10px rgba(0,0,0,0.1); padding:10px; display:none;">
                             {% if user.is_authenticated %}
@@ -982,43 +982,7 @@
         </div>
     </div>
 
-   <!-- Check-in Modal -->
-    <div class="modal" id="checkinModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Manual Check-in</h3>
-                <button class="close-modal" id="closeCheckinModal">&times;</button>
-            </div>
-            <form id="checkinForm" method="post" action="{% url 'manual_checkin' %}">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label for="course">Course</label>
-                    <select id="course" name="course" required>
-                        <option value="">Select a course</option>
-                        {% for session in available_Course %}
-                            <option value="{{ session.id }}">{{ session.course }} - {{ session.date }} {{ session.start_time }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="status">Status</label>
-                    <select id="status" name="status" required>
-                        <option value="PRESENT">Present</option>
-                        <option value="LATE">Late</option>
-                        <option value="ABSENT">Absent (with reason)</option>
-                    </select>
-                </div>
-                <div class="form-group" id="reasonGroup" style="display: none;">
-                    <label for="reason">Reason</label>
-                    <textarea id="reason" name="reason" rows="3"></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="cancelCheckin">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="submitCheckin">Submit</button>
-                </div>
-            </form>
-        </div>
-    </div>
+  
 {% block show_footer %}    
     <!-- Footer -->
 <footer class="attendance-footer">
@@ -1055,53 +1019,7 @@
             icon.classList.toggle('fa-chevron-right');
         });
 
-        // Open modal
-        document.getElementById('openCheckinModal')?.addEventListener('click', () => {
-            document.getElementById('checkinModal').classList.add('active');
-        });
-
-        // Close modal
-        document.getElementById('closeCheckinModal')?.addEventListener('click', () => {
-            document.getElementById('checkinModal').classList.remove('active');
-        });
-
-        document.getElementById('cancelCheckin')?.addEventListener('click', () => {
-            document.getElementById('checkinModal').classList.remove('active');
-        });
-
-        // Show/hide reason
-        document.getElementById('status')?.addEventListener('change', function () {
-            const reasonGroup = document.getElementById('reasonGroup');
-            reasonGroup.style.display = this.value === 'ABSENT' ? 'block' : 'none';
-        });
-
-        // AJAX Form Submission
-        document.getElementById('checkinForm')?.addEventListener('submit', function (e) {
-            e.preventDefault();
-
-            const form = this;
-            const formData = new FormData(form);
-
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    document.getElementById('checkinModal').classList.remove('active');
-                    window.location.reload();
-                } else {
-                    alert(data.message);
-                }
-            })
-            .catch(err => console.error('Submission failed:', err));
-        });
+    
 
         // Responsive sidebar
         function handleResize() {

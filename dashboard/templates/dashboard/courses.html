@@ -1,156 +1,207 @@
 {% extends "dashboard/base.html" %}
 
-{% block title %}My Courses{% endblock %}
-{% block page_title %}My Enrolled Courses{% endblock %}
+{% block title %}Courses{% endblock %}
+{% block page_title %}Courses{% endblock %}
 
 {% block content %}
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
+
     :root {
         --primary: #4f46e5;
         --primary-light: #e0e7ff;
         --success: #10b981;
-        --warning: #f59e0b;
         --danger: #ef4444;
         --dark: #1f2937;
-        --light: #f9fafb;
         --gray: #9ca3af;
         --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
     }
-    
+
     .attendance-section {
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
         font-family: 'Inter', sans-serif;
     }
-    
-    .section-header {
-        margin-bottom: 1.5rem;
-    }
-    
+
     .section-title {
         color: var(--dark);
         font-weight: 600;
         font-size: 1.5rem;
-        margin: 0;
+        margin: 20px 0 10px;
         position: relative;
         display: inline-block;
     }
-    
+
     .section-title::after {
         content: '';
         position: absolute;
-        bottom: -8px;
+        bottom: -6px;
         left: 0;
-        width: 60px;
+        width: 50px;
         height: 3px;
         background: var(--primary);
         border-radius: 2px;
     }
-    
-    .table-responsive {
+
+    .card {
         background: white;
+        padding: 1rem;
         border-radius: 8px;
-        overflow: hidden;
         box-shadow: var(--card-shadow);
+        margin-bottom: 1rem;
     }
-    
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    
-    thead {
-        background-color: var(--primary);
-        color: white;
-    }
-    
-    th {
-        padding: 1rem;
-        text-align: left;
-        font-weight: 500;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    td {
-        padding: 1rem;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 0.9rem;
-    }
-    
-    tbody tr:last-child td {
-        border-bottom: none;
-    }
-    
-    tbody tr:hover {
+
+    .card:hover {
         background-color: var(--primary-light);
     }
-    
+
+    .btn {
+        padding: 6px 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        margin-top: 8px;
+    }
+
+    .btn-enroll { background: var(--success); color: white; }
+    .btn-remove { background: var(--danger); color: white; }
+    .btn-add { background: var(--primary); color: white; }
+
+    select {
+        padding: 7px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        width: 100%;
+        margin-top: 5px;
+        margin-bottom: 10px;
+    }
+
     .text-muted {
         color: var(--gray);
         font-style: italic;
     }
-    
-    .empty-state {
-        background: white;
-        padding: 2rem;
-        text-align: center;
-        border-radius: 8px;
-        box-shadow: var(--card-shadow);
-        color: var(--gray);
-    }
-    
-    @media (max-width: 768px) {
-        .attendance-section {
-            padding: 15px;
-        }
-        
-        th, td {
-            padding: 0.75rem;
-        }
+
+    .top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 </style>
 
 <div class="attendance-section">
-    <div class="section-header">
-        <h2 class="section-title">Your Courses</h2>
-    </div>
 
-    {% if courses %}
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>Course Code</th>
-                    <th>Course Name</th>
-                    <th>Lecturer</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for course in courses %}
-                <tr>
-                    <td>{{ course.code }}</td>
-                    <td>{{ course.name }}</td>
-                    <td>
-                    {% if course.lecturer %}
-                        {{ course.lecturer.get_full_name|default:course.lecturer.username }}
-                    {% else %}
-                       <span class="text-muted">No lecturer assigned</span> 
-                    {% endif %}   
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    <!-- ================= STUDENT ================= -->
+    {% if role == 'STUDENT' %}
+
+        <h2 class="section-title">My Courses</h2>
+
+        {% for course in enrolled_courses %}
+        <div class="card">
+            <strong>{{ course.name }}</strong> ({{ course.code }}) <br>
+
+            {% if course.lecturer %}
+                Lecturer: {{ course.lecturer.username }}
+            {% else %}
+                <span class="text-muted">No lecturer assigned</span>
+            {% endif %}
+
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="course_id" value="{{ course.id }}">
+                <input type="hidden" name="action" value="unenroll">
+                <button class="btn btn-remove">Unenroll</button>
+            </form>
+        </div>
+        {% empty %}
+        <div class="card text-muted">You are not enrolled in any courses.</div>
+        {% endfor %}
+
+        <h2 class="section-title">Available Courses</h2>
+
+        {% for course in available_courses %}
+        <div class="card">
+            <strong>{{ course.name }}</strong> ({{ course.code }})
+
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="course_id" value="{{ course.id }}">
+                <input type="hidden" name="action" value="enroll">
+                <button class="btn btn-enroll">Enroll</button>
+            </form>
+        </div>
+        {% empty %}
+        <div class="card text-muted">No available courses.</div>
+        {% endfor %}
+
+
+    <!-- ================= LECTURER ================= -->
+    {% elif role == 'LECTURER' %}
+
+        <div class="top-bar">
+            <h2 class="section-title">My Courses</h2>
+
+            <a href="{% url 'add_course' %}">
+                <button class="btn btn-add">+ Add Course</button>
+            </a>
+        </div>
+
+        {% for course in lecturer_courses %}
+        <div class="card">
+            <h3>{{ course.name }} ({{ course.code }})</h3>
+
+            <strong>Students:</strong>
+            {% for student in course.students.all %}
+                <div>
+                    {{ student.username }}
+
+                    <form method="POST" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="course_id" value="{{ course.id }}">
+                        <input type="hidden" name="student_id" value="{{ student.id }}">
+                        <input type="hidden" name="action" value="remove_student">
+                        <button class="btn btn-remove">Remove</button>
+                    </form>
+                </div>
+            {% empty %}
+                <p class="text-muted">No students enrolled.</p>
+            {% endfor %}
+
+            <hr>
+
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="course_id" value="{{ course.id }}">
+                <input type="hidden" name="action" value="add_student">
+
+                <select name="student_id">
+                    {% for student in all_students %}
+                        <option value="{{ student.id }}">{{ student.username }}</option>
+                    {% endfor %}
+                </select>
+
+                <button class="btn btn-add">Add Student</button>
+            </form>
+
+        </div>
+        {% endfor %}
+
+
+    <!-- ================= ADMIN ================= -->
     {% else %}
-    <div class="empty-state">
-        You are not enrolled in any courses yet.
-    </div>
+
+        <h2 class="section-title">All Courses</h2>
+
+        {% for course in all_courses %}
+        <div class="card">
+            {{ course.name }} ({{ course.code }})
+        </div>
+        {% empty %}
+        <div class="card text-muted">No courses found.</div>
+        {% endfor %}
+
     {% endif %}
+
 </div>
 {% endblock %}

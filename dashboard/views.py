@@ -7,7 +7,10 @@ from django.utils.timezone import now, localtime
 from django.contrib import messages
 from datetime import date
 from .models import Course, ClassSession, Attendance, Notification, Profile, Message
-from .forms import ManualCheckinForm, RegistrationForm, ClassSessionForm, MessageForm, NotificationForm, UserUpdateForm
+from .forms import (
+    ManualCheckinForm, RegistrationForm, ClassSessionForm, MessageForm,
+    NotificationForm, UserUpdateForm, StudentCourseEnrollmentForm, ManageCourseStudentsForm, CourseForm, CustomLoginForm
+)
 from django.contrib.auth.forms import AuthenticationForm
 import openpyxl
 from openpyxl.styles import Font
@@ -15,10 +18,16 @@ from openpyxl.utils import get_column_letter
 from django.db.models import Q
 from django.contrib.auth.models import User
 
+
+
+# -------------------------
+# Dashboard
+# -------------------------
 @login_required
 def dashboard(request):
     today = date.today()
     role = request.user.profile.role
+    total_classes = 0  # default
 
     if role == 'LECTURER':
         today_sessions = ClassSession.objects.filter(course__lecturer=request.user, date=today)
@@ -55,10 +64,14 @@ def dashboard(request):
         for session in all_sessions:
             enrolled_students = session.course.students.count()
             total_possible_attendances += enrolled_students
-            present_count = Attendance.objects.filter(course=session.course, date=session.date, status='present').count()
+            present_count = Attendance.objects.filter(
+                course=session.course, date=session.date, status='present'
+            ).count()
             total_actual_presents += present_count
 
-        overall_attendance = round((total_actual_presents / total_possible_attendances) * 100) if total_possible_attendances > 0 else 0
+        overall_attendance = round(
+            (total_actual_presents / total_possible_attendances) * 100
+        ) if total_possible_attendances > 0 else 0
 
     warning_classes = []
     if role == 'STUDENT':
@@ -110,25 +123,19 @@ def dashboard(request):
     })
 
 
-# (Rest of the file remains unchanged)
-
-
-
-
+# -------------------------
+# Search
+# -------------------------
 def search_results(request):
-    query = request.GET.get('q')
+    query = request.GET.get('q', '')
     users = User.objects.filter(
         Q(username__icontains=query) |
         Q(email__icontains=query)
     )
-
     profiles = Profile.objects.filter(
         Q(registration_number__icontains=query) |
         Q(role__icontains=query)
     )
-
-    # Add more models/fields as needed
-
     context = {
         'query': query,
         'users': users,
@@ -137,6 +144,9 @@ def search_results(request):
     return render(request, 'dashboard/search_results.html', context)
 
 
+# -------------------------
+# Teacher: Students Checked In
+# -------------------------
 @login_required
 def teacher_students_checked_in(request):
     if request.user.profile.role != 'LECTURER':
@@ -150,7 +160,6 @@ def teacher_students_checked_in(request):
         status='present'
     ).values_list('student_id', flat=True).distinct()
 
-    # Prefetch profiles to avoid DB hits in template
     unique_students = User.objects.filter(id__in=student_ids).select_related('profile')
 
     return render(request, 'dashboard/teacher_students_checked_in.html', {
@@ -158,7 +167,9 @@ def teacher_students_checked_in(request):
     })
 
 
-
+# -------------------------
+# Attendance List
+# -------------------------
 @login_required
 def attendance_list(request):
     role = request.user.profile.role
@@ -187,6 +198,9 @@ def attendance_list(request):
     })
 
 
+# -------------------------
+# Check-in (via UI button)
+# -------------------------
 @login_required
 def checkin(request, session_id):
     if request.method != 'POST':
@@ -194,40 +208,42 @@ def checkin(request, session_id):
 
     session = get_object_or_404(ClassSession, pk=session_id)
 
-    if Attendance.objects.filter(student=request.user, date=session.date, course=session.course).exists():
-        return JsonResponse({'success': False, 'message': 'Already checked in.'})
-
-    Attendance.objects.create(
+    Attendance.objects.update_or_create(
         student=request.user,
-        course=session.course,
-        date=session.date,
-        time=session.start_time,
-        status='present'
+        session=session,   # 👈 THIS is key now
+        defaults={
+            'course': session.course,
+            'date': session.date,
+            'time': session.start_time,
+            'status': 'present',
+            'marked_by': request.user,
+        }
     )
-    return JsonResponse({'success': True, 'message': 'Checked in!'})
+
+    return JsonResponse({'success': True, 'message': 'Check-in successful!'})
+# -------------------------
+# Manual Check-in (Lecturer via UI form)
+# -------------------------
 
 @login_required
 def manual_checkin(request):
-    if request.method == 'POST':
-        form = ManualCheckinForm(user=request.user, data=request.POST)
+    if request.method == "POST":
+        form = ManualCheckinForm(request.POST, user=request.user)
+
         if form.is_valid():
-            Attendance.objects.create(
-                student=form.cleaned_data['student'],
-                course=form.cleaned_data['course'],
-                date=form.cleaned_data['date'],
-                time=form.cleaned_data['time'],
-                status=form.cleaned_data['status'],
-                reason=form.cleaned_data.get('reason', '')
-            )
-            return JsonResponse({'success': True, 'message': 'Manual check-in submitted!'})
-        else:
-            return JsonResponse({'success': False, 'message': 'Invalid form submission.'})
+            form.save()
+            return redirect('attendance_list')
+
     else:
         form = ManualCheckinForm(user=request.user)
 
-    return render(request, 'dashboard/manual_checkin_modal.html', {'form': form})
+    return render(request, 'dashboard/manual_checkin_modal.html', {
+        'form': form
+    })
 
-
+# -------------------------
+# Create Class Session (Lecturer)
+# -------------------------
 @login_required
 def create_class_session(request):
     if request.user.profile.role != 'LECTURER':
@@ -248,9 +264,12 @@ def create_class_session(request):
     return render(request, 'dashboard/create_class_session.html', {'form': form})
 
 
-# Helper to check if user is teacher
+# -------------------------
+# Edit / Delete Class Session (Lecturer)
+# -------------------------
 def is_teacher(user):
     return user.profile.role == 'LECTURER'
+
 
 @user_passes_test(is_teacher)
 @login_required
@@ -268,6 +287,7 @@ def edit_class_session(request, session_id):
 
     return render(request, 'dashboard/edit_class_session.html', {'form': form, 'session': session})
 
+
 @user_passes_test(is_teacher)
 @login_required
 def delete_class_session(request, session_id):
@@ -281,11 +301,121 @@ def delete_class_session(request, session_id):
     return render(request, 'dashboard/confirm_delete_session.html', {'session': session})
 
 
-# notifications/views.py
+@login_required
+def courses(request):
+    role = request.user.profile.role
+
+    # -------------------------
+    # STUDENT LOGIC
+    # -------------------------
+    if role == 'STUDENT':
+        enrolled_courses = request.user.courses_enrolled.all()
+        available_courses = Course.objects.exclude(students=request.user)
+
+        if request.method == 'POST':
+            action = request.POST.get('action')
+            course_id = request.POST.get('course_id')
+
+            if course_id:
+                course = get_object_or_404(Course, id=course_id)
+
+                if action == 'enroll':
+                    course.students.add(request.user)
+                    messages.success(request, f"You have enrolled in {course.name}")
+
+                elif action == 'unenroll':
+                    course.students.remove(request.user)
+                    messages.success(request, f"You have unenrolled from {course.name}")
+
+            return redirect('courses')
+
+        context = {
+            'role': role,
+            'enrolled_courses': enrolled_courses,
+            'available_courses': available_courses,
+        }
+
+    # -------------------------
+    # LECTURER LOGIC
+    # -------------------------
+    elif role == 'LECTURER':
+        lecturer_courses = Course.objects.filter(lecturer=request.user)
+        all_students = User.objects.filter(profile__role='STUDENT')
+
+        if request.method == 'POST':
+            action = request.POST.get('action')
+            course_id = request.POST.get('course_id')
+            student_id = request.POST.get('student_id')
+
+            if course_id:
+                course = get_object_or_404(Course, id=course_id, lecturer=request.user)
+
+                if action == 'add_student' and student_id:
+                    student = get_object_or_404(User, id=student_id)
+                    course.students.add(student)
+                    messages.success(request, f"Student added to {course.name}")
+
+                elif action == 'remove_student' and student_id:
+                    student = get_object_or_404(User, id=student_id)
+                    course.students.remove(student)
+                    messages.success(request, f"Student removed from {course.name}")
+
+            return redirect('courses')
+
+        context = {
+            'role': role,
+            'lecturer_courses': lecturer_courses,
+            'all_students': all_students,
+        }
+
+    # -------------------------
+    # ADMIN LOGIC
+    # -------------------------
+    else:
+        all_courses = Course.objects.all()
+
+        context = {
+            'role': role,
+            'all_courses': all_courses,
+        }
+
+    return render(request, 'dashboard/courses.html', context)
+
+# -------------------------
+# Add Course (Lecturer)
+# -------------------------
+@login_required
+def add_course(request):
+    if request.user.profile.role != 'LECTURER':
+        return HttpResponse("Unauthorized", status=403)
+
+    if request.method == 'POST':
+        form = CourseForm(request.POST)
+
+        if form.is_valid():
+            course = form.save(commit=False)
+            course.lecturer = request.user  # auto assign lecturer
+            course.save()
+            form.save_m2m()
+
+            print("COURSE SAVED:", course)  # debug
+            messages.success(request, "Course created successfully!")
+            return redirect('courses')
+        else:
+            print("FORM ERRORS:", form.errors)
+            messages.error(request, form.errors)
+
+    else:
+        form = CourseForm()
+
+    return render(request, 'dashboard/add_course.html', {'form': form})
+# -------------------------
+# Notifications
+# -------------------------
 @login_required
 def send_notification(request):
     if request.user.profile.role == 'STUDENT':
-        return redirect('view_notifications')  # prevent students from sending
+        return redirect('view_notifications')
 
     if request.method == 'POST':
         form = NotificationForm(request.POST, sender=request.user)
@@ -296,7 +426,9 @@ def send_notification(request):
             return redirect('view_notifications')
     else:
         form = NotificationForm(sender=request.user)
+
     return render(request, 'dashboard/send_notification.html', {'form': form})
+
 
 @login_required
 def view_notifications(request):
@@ -304,17 +436,21 @@ def view_notifications(request):
     return render(request, 'dashboard/view_notifications.html', {'notifications': notifications})
 
 
+@require_POST
 @login_required
-def courses(request):
-    role = request.user.profile.role
-    if role == 'STUDENT':
-        courses = request.user.courses_enrolled.all()
-    elif role == 'LECTURER':
-        courses = Course.objects.filter(lecturer=request.user)
-    else:
-        courses = Course.objects.all()
+def mark_notification_read(request, notification_id):
+    notification = get_object_or_404(Notification, pk=notification_id, recipient=request.user)
+    notification.is_read = True
+    notification.save()
+    return JsonResponse({'success': True})
 
-    return render(request, 'dashboard/courses.html', {'courses': courses})
+
+# -------------------------
+# Reports
+# -------------------------
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from .models import Attendance, ClassSession, Course
 
 
 @login_required
@@ -322,13 +458,24 @@ def reports(request):
     role = request.user.profile.role
     attendance_data = []
 
+    # =========================
+    # STUDENT REPORT
+    # =========================
     if role == 'STUDENT':
         courses = request.user.courses_enrolled.all()
+
         for course in courses:
-            sessions = ClassSession.objects.filter(course=course)
-            attended = Attendance.objects.filter(student=request.user, course=course, status='present').count()
-            total_sessions = sessions.count()
-            percentage = round((attended / total_sessions) * 100) if total_sessions > 0 else 0
+            total_sessions = ClassSession.objects.filter(course=course).count()
+
+            attended = Attendance.objects.filter(
+                student=request.user,
+                session__course=course,
+                status__iexact='present'
+            ).count()
+
+            percentage = round(
+                (attended / total_sessions) * 100
+            ) if total_sessions > 0 else 0
 
             attendance_data.append({
                 'course': course.name,
@@ -337,14 +484,24 @@ def reports(request):
                 'percentage': percentage
             })
 
-        return render(request, 'dashboard/reports.html', {'attendance_data': attendance_data})
+        return render(request, 'dashboard/reports.html', {
+            'attendance_data': attendance_data
+        })
 
+    # =========================
+    # LECTURER REPORT
+    # =========================
     elif role == 'LECTURER':
         courses = Course.objects.filter(lecturer=request.user)
+
         for course in courses:
             sessions = ClassSession.objects.filter(course=course).order_by('-date')
+
             for session in sessions:
-                students_present = Attendance.objects.filter(session=session, status='present').count()
+                students_present = Attendance.objects.filter(
+                    session=session,
+                    status__iexact='present'
+                ).count()
 
                 attendance_data.append({
                     'course': course.name,
@@ -354,28 +511,47 @@ def reports(request):
                     'students_present': students_present,
                 })
 
-        return render(request, 'dashboard/report_teacher.html', {'attendance_data': attendance_data})
+        return render(request, 'dashboard/report_teacher.html', {
+            'attendance_data': attendance_data
+        })
 
-    else:  # Admins can still see course summaries
+    # =========================
+    # ADMIN REPORT
+    # =========================
+    else:
         courses = Course.objects.all()
+
         for course in courses:
             total_sessions = ClassSession.objects.filter(course=course).count()
-            sessions_with_checkins = ClassSession.objects.filter(
-                course=course,
-                attendance__status='present'
-            ).distinct().count()
-            percentage = round((sessions_with_checkins / total_sessions) * 100) if total_sessions > 0 else 0
+
+            total_present = Attendance.objects.filter(
+                session__course=course,
+                status__iexact='present'
+            ).count()
+
+            total_records = Attendance.objects.filter(
+                session__course=course
+            ).count()
+
+            percentage = round(
+                (total_present / total_records) * 100
+            ) if total_records > 0 else 0
 
             attendance_data.append({
                 'course': course.name,
-                'attended': sessions_with_checkins,
-                'total': total_sessions,
+                'attended': total_present,
+                'total': total_records,
                 'percentage': percentage
             })
 
-        return render(request, 'dashboard/reports.html', {'attendance_data': attendance_data})
+        return render(request, 'dashboard/reports.html', {
+            'attendance_data': attendance_data
+        })
 
 
+# -------------------------
+# Export Reports (Student / Admin)
+# -------------------------
 @login_required
 def export_reports_excel(request):
     role = request.user.profile.role
@@ -391,16 +567,16 @@ def export_reports_excel(request):
     ws = wb.active
     ws.title = "Attendance Report"
 
-    # Header row
     headers = ["Course", "Attended", "Total Sessions", "Attendance %"]
     for col_num, header in enumerate(headers, 1):
         ws.cell(row=1, column=col_num, value=header)
 
-    # Data rows
     for row_num, course in enumerate(courses, 2):
         sessions = ClassSession.objects.filter(course=course)
         total_sessions = sessions.count()
-        attended = Attendance.objects.filter(student=request.user, course=course, status='present').count()
+        attended = Attendance.objects.filter(
+            student=request.user, course=course, status='present'
+        ).count()
         percent = round((attended / total_sessions) * 100) if total_sessions > 0 else 0
 
         ws.cell(row=row_num, column=1, value=course.name)
@@ -408,38 +584,38 @@ def export_reports_excel(request):
         ws.cell(row=row_num, column=3, value=total_sessions)
         ws.cell(row=row_num, column=4, value=percent)
 
-    # Auto-adjust column width
     for column_cells in ws.columns:
         max_length = max(len(str(cell.value)) for cell in column_cells if cell.value)
         ws.column_dimensions[get_column_letter(column_cells[0].column)].width = max_length + 2
 
-    # Return Excel file
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
     response['Content-Disposition'] = 'attachment; filename=attendance_report.xlsx'
     wb.save(response)
     return response
 
 
+# -------------------------
+# Export Teacher Report (fixed: was using Course.objects.filter(teacher=...) — now 'lecturer')
+# -------------------------
 @login_required
 def export_teacher_report_excel(request):
     if request.user.profile.role != 'LECTURER':
         return HttpResponse("Unauthorized", status=403)
 
-    # Create workbook and sheet
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Teacher Report"
 
-    # Header
     headers = ['Course', 'Date', 'Start Time', 'End Time', 'Students Present']
     ws.append(headers)
 
-    # Make headers bold
-    for col in range(1, len(headers)+1):
+    for col in range(1, len(headers) + 1):
         ws.cell(row=1, column=col).font = Font(bold=True)
 
-    # Populate rows
-    courses = Course.objects.filter(teacher=request.user)
+    # Fixed: changed 'teacher' to 'lecturer' to match the Course model field
+    courses = Course.objects.filter(lecturer=request.user)
     for course in courses:
         sessions = ClassSession.objects.filter(course=course).order_by('-date')
         for session in sessions:
@@ -452,53 +628,17 @@ def export_teacher_report_excel(request):
                 students_present
             ])
 
-    # Prepare HTTP response
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
     response['Content-Disposition'] = 'attachment; filename=teacher_report.xlsx'
     wb.save(response)
     return response
 
 
-@login_required
-def messages_page(request):
-    return render(request, 'dashboard/messages.html')
-
-
-@login_required
-def settings(request):
-    if request.method == 'POST':
-        pass
-    return render(request, 'dashboard/settings.html')
-
-
-@require_POST
-@login_required
-def mark_notification_read(request, notification_id):
-    notification = get_object_or_404(Notification, pk=notification_id, recipient=request.user)
-    notification.is_read = True
-    notification.save()
-    return JsonResponse({'success': True})
-
-
-@login_required
-def message_view(request):
-    messages = Message.objects.filter(recipient=request.user).order_by('-timestamp')
-    form = MessageForm()
-
-    if request.method == 'POST':
-        form = MessageForm(request.POST)
-        if form.is_valid():
-            new_message = form.save(commit=False)
-            new_message.sender = request.user
-            new_message.save()
-            return redirect('messages')  # replace with your message URL name
-
-    return render(request, 'dashboard/message.html', {
-        'messages': messages,
-        'form': form,
-    })
-
-
+# -------------------------
+# Export Attendance History (all roles)
+# -------------------------
 @login_required
 def export_attendance_excel(request):
     role = request.user.profile.role
@@ -509,15 +649,12 @@ def export_attendance_excel(request):
     else:
         attendances = Attendance.objects.all()
 
-    # Create an Excel workbook and sheet
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Attendance History"
 
-    # Write header row
     ws.append(['Student', 'Course', 'Date', 'Time', 'Status', 'Reason'])
 
-    # Write attendance rows
     for att in attendances:
         ws.append([
             att.student.username,
@@ -528,7 +665,6 @@ def export_attendance_excel(request):
             att.reason or ''
         ])
 
-    # Create response
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
@@ -536,6 +672,37 @@ def export_attendance_excel(request):
     wb.save(response)
     return response
 
+
+# -------------------------
+# Messages
+# -------------------------
+@login_required
+def messages_page(request):
+    return render(request, 'dashboard/messages.html')
+
+
+@login_required
+def message_view(request):
+    user_messages = Message.objects.filter(recipient=request.user).order_by('-timestamp')
+    form = MessageForm()
+
+    if request.method == 'POST':
+        form = MessageForm(request.POST)
+        if form.is_valid():
+            new_message = form.save(commit=False)
+            new_message.sender = request.user
+            new_message.save()
+            return redirect('messages')
+
+    return render(request, 'dashboard/message.html', {
+        'messages': user_messages,
+        'form': form,
+    })
+
+
+# -------------------------
+# Settings
+# -------------------------
 @login_required
 def settings(request):
     if request.method == 'POST':
@@ -550,6 +717,9 @@ def settings(request):
     return render(request, 'dashboard/settings.html', {'form': form})
 
 
+# -------------------------
+# Auth: Register, Login, Logout
+# -------------------------
 def register(request):
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
@@ -562,18 +732,53 @@ def register(request):
     return render(request, 'dashboard/register.html', {'form': form})
 
 
+
+
+
 def user_login(request):
     if request.method == 'POST':
-        form = AuthenticationForm(data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        role = request.POST.get('role')
+        reg_no = request.POST.get('registration_number')
+        staff_no = request.POST.get('staff_number')
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            profile = user.profile
+
+            # -------------------------
+            # ROLE CHECK
+            # -------------------------
+            if profile.role != role:
+                messages.error(request, "Incorrect role selected.")
+                return redirect('login')
+
+            # -------------------------
+            # STUDENT CHECK
+            # -------------------------
+            if role == 'STUDENT':
+                if not profile.registration_number or profile.registration_number.strip() != reg_no.strip():
+                    messages.error(request, "Invalid registration number.")
+                    return redirect('login')
+
+            # -------------------------
+            # LECTURER CHECK
+            # -------------------------
+            elif role == 'LECTURER':
+                if not profile.staff_number or profile.staff_number.strip() != staff_no.strip():
+                    messages.error(request, "Invalid staff number.")
+                    return redirect('login')
+
             login(request, user)
             return redirect('dashboard')
+
         else:
             messages.error(request, "Invalid username or password.")
-    else:
-        form = AuthenticationForm()
-    return render(request, 'dashboard/login.html', {'form': form})
+            return redirect('login')
+
+    return render(request, 'dashboard/login.html')
 
 
 def user_logout(request):
