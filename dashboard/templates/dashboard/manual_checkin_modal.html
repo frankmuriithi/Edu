@@ -5,6 +5,137 @@
 
 {% block content %}
 
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        background: #f3f4f6;
+    }
+
+    .attendance-section {
+        max-width: 650px;
+        margin: 30px auto;
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: var(--card-shadow);
+    }
+
+    .section-header {
+        margin-bottom: 20px;
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--dark);
+        border-left: 4px solid var(--primary);
+        padding-left: 10px;
+    }
+
+    /* FORM */
+    form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    label {
+        font-weight: 500;
+        margin-bottom: 6px;
+        color: var(--dark);
+        font-size: 14px;
+    }
+
+    input, select, textarea {
+        padding: 10px 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 14px;
+        outline: none;
+        transition: 0.2s;
+        background: #fff;
+    }
+
+    input:focus, select:focus, textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+
+    /* BUTTON */
+    .btn {
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.2s;
+        font-size: 14px;
+    }
+
+    .btn-primary {
+        background: var(--success);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #0d9c6e;
+    }
+
+    /* ERROR BOX */
+    .error-box {
+        background: #fee2e2;
+        border: 1px solid #ef4444;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        font-size: 14px;
+    }
+
+    .error-box ul {
+        margin: 0;
+        padding-left: 18px;
+    }
+
+    .error-box li {
+        margin-bottom: 5px;
+    }
+
+    /* ANIMATION */
+    .fade-in {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+        .attendance-section {
+            margin: 15px;
+            padding: 20px;
+        }
+    }
+</style>
+
 <div class="attendance-section fade-in">
 
     <div class="section-header">
@@ -12,8 +143,8 @@
     </div>
 
     {% if form.errors %}
-    <div style="background:#ffe6e6;padding:10px;border:1px solid red;border-radius:5px;margin-bottom:15px;">
-        <ul style="margin:0;padding-left:20px;">
+    <div class="error-box">
+        <ul>
             {% for field in form %}
                 {% for error in field.errors %}
                     <li><strong>{{ field.label }}:</strong> {{ error }}</li>
@@ -30,37 +161,31 @@
     <form method="post" action="{% url 'manual_checkin' %}" id="checkinForm">
         {% csrf_token %}
 
-        <!-- COURSE -->
         <div class="form-group">
             {{ form.course.label_tag }}
             {{ form.course }}
         </div>
 
-        <!-- STUDENT -->
         <div class="form-group">
             {{ form.student.label_tag }}
             {{ form.student }}
         </div>
 
-        <!-- DATE -->
         <div class="form-group">
             {{ form.date.label_tag }}
             {{ form.date }}
         </div>
 
-        <!-- TIME -->
         <div class="form-group">
             {{ form.time.label_tag }}
             {{ form.time }}
         </div>
 
-        <!-- STATUS -->
         <div class="form-group">
             {{ form.status.label_tag }}
             {{ form.status }}
         </div>
 
-        <!-- REASON -->
         <div class="form-group" id="reasonGroup" style="display:none;">
             {{ form.reason.label_tag }}
             {{ form.reason }}
@@ -76,31 +201,30 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
-    // 🔥 Reload form when course changes (to load students)
     const courseField = document.getElementById('id_course');
+
     if (courseField) {
         courseField.addEventListener('change', function () {
             this.form.submit();
         });
     }
 
-    // 🔥 Show/hide reason field when absent is selected
     const statusField = document.getElementById('id_status');
     const reasonGroup = document.getElementById('reasonGroup');
 
     function toggleReason() {
-        if (statusField && reasonGroup) {
-            if (statusField.value.toLowerCase() === 'absent') {
-                reasonGroup.style.display = 'block';
-            } else {
-                reasonGroup.style.display = 'none';
-            }
+        if (!statusField || !reasonGroup) return;
+
+        if (statusField.value.toLowerCase() === 'absent') {
+            reasonGroup.style.display = 'block';
+        } else {
+            reasonGroup.style.display = 'none';
         }
     }
 
     if (statusField) {
         statusField.addEventListener('change', toggleReason);
-        toggleReason(); // run on load
+        toggleReason();
     }
 
 });

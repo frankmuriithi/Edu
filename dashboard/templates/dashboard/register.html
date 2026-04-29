@@ -1,17 +1,15 @@
 {% extends 'dashboard/base.html' %}
 {% block title %}Register{% endblock %}
+
 {% block content %}
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
     :root {
         --primary: #4f46e5;
-        --primary-light: #e0e7ff;
         --success: #10b981;
-        --warning: #f59e0b;
         --danger: #ef4444;
         --dark: #1f2937;
-        --light: #f9fafb;
         --gray: #9ca3af;
         --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
     }
@@ -24,26 +22,8 @@
     }
     
     h2 {
-        color: var(--dark);
-        font-weight: 600;
-        margin-bottom: 1.5rem;
-        font-size: 1.75rem;
-        position: relative;
-        display: inline-block;
         text-align: center;
-        width: 100%;
-    }
-    
-    h2::after {
-        content: '';
-        position: absolute;
-        bottom: -8px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 60px;
-        height: 3px;
-        background: var(--primary);
-        border-radius: 2px;
+        margin-bottom: 1.5rem;
     }
     
     .register-card {
@@ -51,35 +31,24 @@
         border-radius: 8px;
         padding: 2rem;
         box-shadow: var(--card-shadow);
-        margin-top: 1.5rem;
     }
     
     .register-form p {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.2rem;
     }
     
     .register-form label {
         display: block;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.4rem;
         font-weight: 500;
-        color: var(--dark);
     }
     
     .register-form input,
     .register-form select {
         width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #e2e8f0;
+        padding: 0.7rem;
+        border: 1px solid #ddd;
         border-radius: 6px;
-        font-family: 'Inter', sans-serif;
-        transition: all 0.2s;
-    }
-    
-    .register-form input:focus,
-    .register-form select:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
     }
     
     .btn-register {
@@ -88,30 +57,13 @@
         border: none;
         padding: 0.75rem;
         border-radius: 6px;
-        font-weight: 500;
         cursor: pointer;
         width: 100%;
-        transition: all 0.2s;
-    }
-    
-    .btn-register:hover {
-        background-color: #0d9c6e;
-        transform: translateY(-1px);
-    }
-    
-    .login-link {
-        text-align: center;
-        margin-top: 1.5rem;
-    }
-    
-    .login-link a {
-        color: var(--primary);
-        text-decoration: none;
         font-weight: 500;
     }
-    
-    .login-link a:hover {
-        text-decoration: underline;
+
+    .btn-register:hover {
+        background-color: #0d9c6e;
     }
     
     .errorlist {
@@ -119,6 +71,14 @@
         font-size: 0.9rem;
         list-style: none;
         padding-left: 0;
+        margin-top: 5px;
+    }
+
+    .help-text {
+        font-size: 0.8rem;
+        color: var(--gray);
+        margin-top: 4px;
+        display: block;
     }
 </style>
 
@@ -126,27 +86,41 @@
     <h2>Create Account</h2>
     
     <div class="register-card">
+
+        <!-- 🔥 GLOBAL FORM ERRORS -->
+        {% if form.non_field_errors %}
+            <ul class="errorlist">
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
         <form method="post" class="register-form">
             {% csrf_token %}
 
+            <!-- USERNAME (FULL NAME INPUT) -->
             <p>
-                {{ form.username.label_tag }}
-                {{ form.username }}
-                {{ form.username.errors }}
+                {{ form.full_name.label_tag }}
+                {{ form.full_name }}
+                {{ form.full_name.errors }}
             </p>
 
+            <!-- EMAIL -->
             <p>
                 {{ form.email.label_tag }}
                 {{ form.email }}
                 {{ form.email.errors }}
             </p>
             
+            <!-- PASSWORD -->
             <p>
                 {{ form.password.label_tag }}
                 {{ form.password }}
                 {{ form.password.errors }}
             </p>
 
+            <!-- ROLE -->
             <p>
                 {{ form.role.label_tag }}
                 {{ form.role }}
@@ -156,7 +130,7 @@
             <!-- STUDENT FIELD -->
             <div id="registration_group">
                 <p>
-                    <label for="id_registration_number">Registration Number</label>
+                    {{ form.registration_number.label_tag }}
                     {{ form.registration_number }}
                     {{ form.registration_number.errors }}
                 </p>
@@ -165,7 +139,7 @@
             <!-- LECTURER FIELD -->
             <div id="staff_group" style="display:none;">
                 <p>
-                    <label for="id_staff_number">Staff Number</label>
+                    {{ form.staff_number.label_tag }}
                     {{ form.staff_number }}
                     {{ form.staff_number.errors }}
                 </p>
@@ -174,51 +148,67 @@
             <button type="submit" class="btn-register">Register</button>
         </form>
         
-        <p class="login-link">
-            Already have an account? <a href="{% url 'login' %}">Login here</a>.
+        <p style="text-align:center; margin-top:1rem;">
+            Already have an account? 
+            <a href="{% url 'login' %}">Login here</a>
         </p>
     </div>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const roleField = document.getElementById('id_role');
+document.addEventListener('DOMContentLoaded', function () {
 
-        const regGroup = document.getElementById('registration_group');
-        const staffGroup = document.getElementById('staff_group');
+    const roleField = document.getElementById('id_role');
+    const regGroup = document.getElementById('registration_group');
+    const staffGroup = document.getElementById('staff_group');
 
-        const regInput = document.getElementById('id_registration_number');
-        const staffInput = document.getElementById('id_staff_number');
+    const regInput = document.getElementById('id_registration_number');
+    const staffInput = document.getElementById('id_staff_number');
 
-        function toggleFields() {
-            const role = roleField.value;
+    const usernameField = document.getElementById('id_username');
 
-            if (role === 'LECTURER' || role === 'ADMIN') {
-                regGroup.style.display = 'none';
-                staffGroup.style.display = 'block';
+    // 🔥 FIX: Remove Django username restriction confusion
+    // (we guide user instead of letting them fail blindly)
+    if (usernameField) {
+        usernameField.placeholder = "e.g. John Doe";
+    }
 
-                regInput.required = false;
-                staffInput.required = true;
+    function toggleFields() {
+        const role = roleField.value;
 
-                regInput.value = ''; // prevent accidental submission
+        if (role === 'LECTURER') {
+            regGroup.style.display = 'none';
+            staffGroup.style.display = 'block';
 
-            } else {
-                regGroup.style.display = 'block';
-                staffGroup.style.display = 'none';
+            regInput.required = false;
+            staffInput.required = true;
 
-                regInput.required = true;
-                staffInput.required = false;
+            regInput.value = '';
 
-                staffInput.value = '';
-            }
+        } else if (role === 'STUDENT') {
+            regGroup.style.display = 'block';
+            staffGroup.style.display = 'none';
+
+            regInput.required = true;
+            staffInput.required = false;
+
+            staffInput.value = '';
+        } else {
+            // ADMIN
+            regGroup.style.display = 'none';
+            staffGroup.style.display = 'none';
+
+            regInput.required = false;
+            staffInput.required = false;
+
+            regInput.value = '';
+            staffInput.value = '';
         }
+    }
 
-        // Run on load
-        toggleFields();
-
-        // Run on change
-        roleField.addEventListener('change', toggleFields);
-    });
+    toggleFields();
+    roleField.addEventListener('change', toggleFields);
+});
 </script>
 
 {% endblock %}

@@ -18,110 +18,130 @@ from openpyxl.utils import get_column_letter
 from django.db.models import Q
 from django.contrib.auth.models import User
 
+from django.utils.timezone import make_aware
+from datetime import datetime
 
+def get_session_status(session):
+    now_dt = localtime(now())
+
+    start_dt = make_aware(datetime.combine(session.date, session.start_time))
+    end_dt = make_aware(datetime.combine(session.date, session.end_time))
+
+    if now_dt < start_dt:
+        return "UPCOMING"
+    elif now_dt > end_dt:
+        return "CLOSED"
+    else:
+        return "ACTIVE"
 
 # -------------------------
 # Dashboard
 # -------------------------
 @login_required
 def dashboard(request):
-    today = date.today()
+    current_dt = localtime(now())
+    today = current_dt.date()
+    current_time = current_dt.time()
     role = request.user.profile.role
-    total_classes = 0  # default
+
+    today_sessions = ClassSession.objects.none()
 
     if role == 'LECTURER':
-        today_sessions = ClassSession.objects.filter(course__lecturer=request.user, date=today)
+        today_sessions = ClassSession.objects.filter(
+            course__lecturer=request.user,
+            date=today
+        )
     elif role == 'STUDENT':
-        today_sessions = ClassSession.objects.filter(date=today, course__students=request.user)
-    else:
-        today_sessions = ClassSession.objects.filter(date=today)
-
-    unchecked_sessions = []
-    if role == 'STUDENT':
-        for session in today_sessions:
-            already_checked_in = Attendance.objects.filter(
-                student=request.user,
-                course=session.course,
-                date=session.date
-            ).exists()
-            if not already_checked_in:
-                unchecked_sessions.append(session)
-
-    overall_attendance = 0
-    if role == 'STUDENT':
-        user_attendances = Attendance.objects.filter(student=request.user)
-        present_count = user_attendances.filter(status='present').count()
-        overall_attendance = round((present_count / user_attendances.count()) * 100) if user_attendances.count() > 0 else 0
-
-    elif role == 'LECTURER':
-        all_courses = Course.objects.filter(lecturer=request.user)
-        all_sessions = ClassSession.objects.filter(course__in=all_courses)
-
-        total_classes = all_sessions.count()
-        total_possible_attendances = 0
-        total_actual_presents = 0
-
-        for session in all_sessions:
-            enrolled_students = session.course.students.count()
-            total_possible_attendances += enrolled_students
-            present_count = Attendance.objects.filter(
-                course=session.course, date=session.date, status='present'
-            ).count()
-            total_actual_presents += present_count
-
-        overall_attendance = round(
-            (total_actual_presents / total_possible_attendances) * 100
-        ) if total_possible_attendances > 0 else 0
-
-    warning_classes = []
-    if role == 'STUDENT':
-        warning_threshold = 75
-        for course in request.user.courses_enrolled.all():
-            course_sessions = ClassSession.objects.filter(course=course)
-            if course_sessions.exists():
-                attended = Attendance.objects.filter(
-                    student=request.user,
-                    course=course,
-                    status='present'
-                ).count()
-                percentage = round((attended / course_sessions.count()) * 100)
-                if percentage < warning_threshold:
-                    warning_classes.append({
-                        'course': course,
-                        'attendance': percentage
-                    })
+        today_sessions = ClassSession.objects.filter(
+            course__students=request.user,
+            date=today
+        )
 
     session_data = []
-    current_time = now().time()
+    unchecked_sessions = []
+
     for session in today_sessions:
+        status = get_session_status(session)
+
         attendance = None
         if role == 'STUDENT':
             attendance = Attendance.objects.filter(
                 student=request.user,
-                course=session.course,
-                date=session.date
+                session=session
             ).first()
 
-        has_checkin = Attendance.objects.filter(session=session, status='present').exists()
+            # Only allow check-in if ACTIVE
+            if status == "ACTIVE" and not attendance:
+                unchecked_sessions.append(session)
 
         session_data.append({
-            'session': session,
-            'attendance': attendance,
-            'is_ongoing': session.start_time <= current_time <= session.end_time,
-            'has_checkin': has_checkin,
+            "session": session,
+            "attendance": attendance,
+            "session_status": status
         })
 
-    unread_notifications = Notification.objects.filter(recipient=request.user, is_read=False).count()
+    # STUDENT STATS
+    overall_attendance = 0
+    if role == "STUDENT":
+        records = Attendance.objects.filter(student=request.user)
+        present = records.filter(status='present').count()
+        total = records.count()
+
+        overall_attendance = round((present / total) * 100) if total else 0
+
+    # LECTURER STATS
+    lecturer_stats = {}
+    if role == "LECTURER":
+        sessions = ClassSession.objects.filter(course__lecturer=request.user)
+
+        total_students = sum(s.course.students.count() for s in sessions)
+        present = Attendance.objects.filter(
+            session__in=sessions,
+            status='present'
+        ).count()
+
+        lecturer_stats = {
+            "attendance_percentage": round((present / total_students) * 100) if total_students else 0,
+            "checked_in_students": present,
+            "total_students": total_students,
+            "absent_students": total_students - present
+        }
 
     return render(request, 'dashboard/dashboard.html', {
-        'session_data': session_data,
-        'total_classes': total_classes if role == 'LECTURER' else ClassSession.objects.count(),
-        'overall_attendance': overall_attendance,
-        'warning_classes': warning_classes,
-        'unread_notifications': unread_notifications,
-        'unchecked_sessions': unchecked_sessions,
+        "session_data": session_data,
+        "unchecked_sessions": unchecked_sessions,
+        "overall_attendance": overall_attendance,
+        "lecturer_stats": lecturer_stats,
+        "role": role
     })
 
+# -------------------------
+# Attendance List (STUDENT ONLY 🔥)
+# -------------------------
+@login_required
+def attendance_list(request):
+    if request.user.profile.role != 'STUDENT':
+        return redirect('dashboard')  # 🚫 block lecturers
+
+    courses = request.user.courses_enrolled.all()
+    selected_course = request.GET.get('course')
+
+    if selected_course:
+        attendances = Attendance.objects.filter(
+            student=request.user,
+            course_id=selected_course
+        )
+    else:
+        attendances = Attendance.objects.filter(
+            student=request.user,
+            course__in=courses
+        )
+
+    return render(request, 'dashboard/attendance_list.html', {
+        'courses': courses,
+        'selected_course': selected_course,
+        'attendances': attendances,
+    })
 
 # -------------------------
 # Search
@@ -173,72 +193,124 @@ def teacher_students_checked_in(request):
 @login_required
 def attendance_list(request):
     role = request.user.profile.role
-    if role == 'STUDENT':
+
+    if role == "STUDENT":
         courses = request.user.courses_enrolled.all()
-    elif role == 'LECTURER':
-        courses = Course.objects.filter(lecturer=request.user)
-    else:
-        courses = Course.objects.all()
-
-    selected_course = request.GET.get('course')
-    if selected_course:
-        sessions = ClassSession.objects.filter(course_id=selected_course)
-    else:
-        sessions = ClassSession.objects.filter(course__in=courses)
-
-    if role == 'STUDENT':
         attendances = Attendance.objects.filter(student=request.user, course__in=courses)
-    else:
+
+    elif role == "LECTURER":
+        courses = Course.objects.filter(lecturer=request.user)
         attendances = Attendance.objects.filter(course__in=courses)
 
-    return render(request, 'dashboard/attendance_list.html', {
-        'courses': courses,
-        'selected_course': selected_course,
-        'attendances': attendances,
+    else:
+        courses = Course.objects.all()
+        attendances = Attendance.objects.all()
+
+    selected_course = request.GET.get("course")
+    if selected_course:
+        attendances = attendances.filter(course_id=selected_course)
+
+    return render(request, "dashboard/attendance_list.html", {
+        "courses": courses,
+        "attendances": attendances,
+        "selected_course": selected_course
     })
 
 
 # -------------------------
 # Check-in (via UI button)
 # -------------------------
+
 @login_required
 def checkin(request, session_id):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+    if request.method != "POST":
+        return JsonResponse({"success": False}, status=405)
 
-    session = get_object_or_404(ClassSession, pk=session_id)
+    session = get_object_or_404(ClassSession, id=session_id)
+
+    current_dt = localtime(now())
+    status = get_session_status(session)
+
+    if status != "ACTIVE":
+        messages.error(request, "This session is not active.")
+        return redirect("dashboard")
 
     Attendance.objects.update_or_create(
         student=request.user,
-        session=session,   # 👈 THIS is key now
+        session=session,
         defaults={
-            'course': session.course,
-            'date': session.date,
-            'time': session.start_time,
-            'status': 'present',
-            'marked_by': request.user,
+            "course": session.course,
+            "date": session.date,
+            "time": current_dt.time(),
+            "status": "present",
+            "marked_by": request.user
         }
     )
 
-    return JsonResponse({'success': True, 'message': 'Check-in successful!'})
+    return redirect("checkin_success")
+
+
+@login_required
+def checkin_success(request):
+    return render(request, 'dashboard/checkin_success.html')    
 # -------------------------
 # Manual Check-in (Lecturer via UI form)
 # -------------------------
 
 @login_required
 def manual_checkin(request):
+    if request.user.profile.role != "LECTURER":
+        return redirect("dashboard")
+
     if request.method == "POST":
         form = ManualCheckinForm(request.POST, user=request.user)
 
         if form.is_valid():
-            form.save()
-            return redirect('attendance_list')
+            student = form.cleaned_data["student"]
+            course = form.cleaned_data["course"]
+            date_val = form.cleaned_data["date"]
+            time_val = form.cleaned_data["time"]
+            status = form.cleaned_data["status"]
+            reason = form.cleaned_data["reason"]
+
+            # FIXED: get correct session (LATEST + EXACT MATCH)
+            session = ClassSession.objects.filter(
+                course=course,
+                date=date_val
+            ).order_by("-start_time").first()
+
+            if not session:
+                messages.error(request, "No session found.")
+                return redirect("attendance_list")
+
+            current_dt = localtime(now())
+            session_status = get_session_status(session)
+
+            if session_status != "ACTIVE":
+                messages.error(request, "Cannot mark attendance outside active session.")
+                return redirect("attendance_list")
+
+            Attendance.objects.update_or_create(
+                student=student,
+                session=session,
+                defaults={
+                    "course": course,
+                    "date": date_val,
+                    "time": time_val,
+                    "status": status,
+                    "reason": reason,
+                    "marked_by": request.user
+                }
+            )
+
+            messages.success(request, "Attendance marked successfully.")
+            return redirect("attendance_list")
 
     else:
         form = ManualCheckinForm(user=request.user)
 
-    return render(request, 'dashboard/manual_checkin_modal.html', {
-        'form': form
+    return render(request, "dashboard/manual_checkin_modal.html", {
+        "form": form
     })
 
 # -------------------------
@@ -246,23 +318,20 @@ def manual_checkin(request):
 # -------------------------
 @login_required
 def create_class_session(request):
-    if request.user.profile.role != 'LECTURER':
-        return redirect('dashboard')
+    if request.user.profile.role != "LECTURER":
+        return redirect("dashboard")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = ClassSessionForm(request.user, request.POST)
         if form.is_valid():
-            session = form.save(commit=False)
-            session.save()
-            messages.success(request, "Class session created successfully.")
-            return redirect('dashboard')
-        else:
-            messages.error(request, "Invalid form. Please check your inputs.")
+            form.save()
+            messages.success(request, "Session created")
+            return redirect("dashboard")
+
     else:
         form = ClassSessionForm(request.user)
 
-    return render(request, 'dashboard/create_class_session.html', {'form': form})
-
+    return render(request, "dashboard/create_class_session.html", {"form": form})
 
 # -------------------------
 # Edit / Delete Class Session (Lecturer)
@@ -448,10 +517,6 @@ def mark_notification_read(request, notification_id):
 # -------------------------
 # Reports
 # -------------------------
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from .models import Attendance, ClassSession, Course
-
 
 @login_required
 def reports(request):
@@ -736,50 +801,24 @@ def register(request):
 
 
 def user_login(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
+    if request.method == "POST":
+        email = request.POST.get('email')
         password = request.POST.get('password')
-        role = request.POST.get('role')
-        reg_no = request.POST.get('registration_number')
-        staff_no = request.POST.get('staff_number')
 
-        user = authenticate(request, username=username, password=password)
+        try:
+            user_obj = User.objects.get(email=email)
+            user = authenticate(request, username=user_obj.username, password=password)
 
-        if user is not None:
-            profile = user.profile
+            if user is not None:
+                login(request, user)
+                return redirect('dashboard')
+            else:
+                messages.error(request, "Invalid password")
 
-            # -------------------------
-            # ROLE CHECK
-            # -------------------------
-            if profile.role != role:
-                messages.error(request, "Incorrect role selected.")
-                return redirect('login')
-
-            # -------------------------
-            # STUDENT CHECK
-            # -------------------------
-            if role == 'STUDENT':
-                if not profile.registration_number or profile.registration_number.strip() != reg_no.strip():
-                    messages.error(request, "Invalid registration number.")
-                    return redirect('login')
-
-            # -------------------------
-            # LECTURER CHECK
-            # -------------------------
-            elif role == 'LECTURER':
-                if not profile.staff_number or profile.staff_number.strip() != staff_no.strip():
-                    messages.error(request, "Invalid staff number.")
-                    return redirect('login')
-
-            login(request, user)
-            return redirect('dashboard')
-
-        else:
-            messages.error(request, "Invalid username or password.")
-            return redirect('login')
+        except User.DoesNotExist:
+            messages.error(request, "User with this email does not exist")
 
     return render(request, 'dashboard/login.html')
-
 
 def user_logout(request):
     logout(request)

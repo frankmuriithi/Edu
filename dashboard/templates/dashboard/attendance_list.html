@@ -197,9 +197,9 @@
                     <td>{{ attendance.time }}</td>
                     <td>
                         <span class="status-badge 
-                            {% if attendance.status == 'PRESENT' %}status-present
-                            {% elif attendance.status == 'ABSENT' %}status-absent
-                            {% elif attendance.status == 'LATE' %}status-late
+                            {% if attendance.status == 'present' %}status-present
+                            {% elif attendance.status == 'absent' %}status-absent
+                            {% elif attendance.status == 'late' %}status-late
                             {% endif %}">
                             {{ attendance.get_status_display }}
                         </span>

@@ -101,8 +101,13 @@ class Attendance(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('student', 'session')
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student', 'session'],
+                name='unique_student_session_attendance'
+            )
+        ]
 
     def __str__(self):
         return f"{self.student} - {self.course.name} on {self.date}: {self.status}"
@@ -131,3 +136,4 @@ class Message(models.Model):
 
     def __str__(self):
         return f'From {self.sender} to {self.recipient} at {self.timestamp}'
+        

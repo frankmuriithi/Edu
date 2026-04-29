@@ -271,6 +271,30 @@
     .action-btn:hover {
         background-color: #f1f5f9;
     }
+
+    .status-active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16,185,129,0.3);
+}
+
+    .status-active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16,185,129,0.3);
+}
+
+    .status-closed {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239,68,68,0.3);
+    }
+
+    .status-upcoming {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+        border: 1px solid rgba(59,130,246,0.3);
+    }
     
     @media (max-width: 768px) {
         .dashboard-cards {
@@ -296,51 +320,73 @@
         th, td {
             padding: 0.75rem;
         }
+
+                .status-active {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        
     }
 </style>
 
 <!-- Dashboard Cards -->
 <div class="dashboard-cards">
-    <div class="card fade-in delay-1">
-        <div class="card-icon">
-            <i class="fas fa-calendar-check"></i>
-        </div>
+
+    {% if role == 'STUDENT' %}
+    
+    <div class="card">
+        <div class="card-icon"><i class="fas fa-calendar-check"></i></div>
         <h3 class="card-title">Today's Attendance</h3>
         <p class="card-value">{{ overall_attendance }}%</p>
-        <span class="card-change positive">
-            <i class="fas fa-arrow-up"></i> 5% from yesterday
-        </span>
     </div>
-    <div class="card fade-in delay-2">
-        <div class="card-icon">
-            <i class="fas fa-user-graduate"></i>
-        </div>
+
+    <div class="card">
+        <div class="card-icon"><i class="fas fa-user-graduate"></i></div>
         <h3 class="card-title">Total Classes</h3>
-        <p class="card-value">{{ total_classes }}</p>
-        <span class="card-change positive">
-            <i class="fas fa-arrow-up"></i> 2 this week
-        </span>
+        <p class="card-value">{{ session_data|length }}</p>
     </div>
-    <div class="card fade-in delay-3">
-        <div class="card-icon">
-            <i class="fas fa-chart-line"></i>
-        </div>
+
+    <div class="card">
+        <div class="card-icon"><i class="fas fa-chart-line"></i></div>
         <h3 class="card-title">Overall Attendance</h3>
         <p class="card-value">{{ overall_attendance }}%</p>
-        <span class="card-change negative">
-            <i class="fas fa-arrow-down"></i> 3% this month
-        </span>
     </div>
-    <div class="card fade-in delay-4">
-        <div class="card-icon">
-            <i class="fas fa-exclamation-triangle"></i>
-        </div>
+
+    <div class="card">
+        <div class="card-icon"><i class="fas fa-exclamation-triangle"></i></div>
         <h3 class="card-title">Unchecked Classes</h3>
-        <p class="card-value">{{ warning_classes|length }}</p>
-        <span class="card-change">
-            <i class="fas fa-equals"></i> No change
-        </span>
+        <p class="card-value">{{ unchecked_sessions|length }}</p>
     </div>
+
+    {% elif role == 'LECTURER' %}
+
+    <div class="card">
+        <div class="card-icon"><i class="fas fa-percentage"></i></div>
+        <h3 class="card-title">Attendance %</h3>
+        <p class="card-value">{{ lecturer_stats.attendance_percentage }}%</p>
+    </div>
+
+    <div class="card">
+        <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+        <h3 class="card-title">Checked In</h3>
+        <p class="card-value">{{ lecturer_stats.checked_in_students }}</p>
+    </div>
+
+    <div class="card">
+        <div class="card-icon"><i class="fas fa-users"></i></div>
+        <h3 class="card-title">Total Students</h3>
+        <p class="card-value">{{ lecturer_stats.total_students }}</p>
+    </div>
+
+    <div class="card">
+        <div class="card-icon"><i class="fas fa-user-times"></i></div>
+        <h3 class="card-title">Absent Students</h3>
+        <p class="card-value">{{ lecturer_stats.absent_students }}</p>
+    </div>
+
+    {% endif %}
+
 </div>
 
 <!-- Check-in Section -->
@@ -360,17 +406,19 @@
     </div>
 
     {% if request.user.profile.role == 'STUDENT' %}
-        {% for session in unchecked_sessions %}
-            <form method="POST" action="{% url 'checkin' session.id %}" class="checkin-form">
+    {% for item in session_data %}
+        {% if item.session_status == 'ACTIVE' and not item.attendance %}
+            <form method="POST" action="{% url 'checkin' item.session.id %}" class="checkin-form">
                 {% csrf_token %}
                 <button type="submit" class="checkin-btn pulse">
-                    <i class="fas fa-fingerprint"></i> Check-in for {{ session.course.name }}
+                    <i class="fas fa-fingerprint"></i> Check-in for {{ item.session.course.name }}
                 </button>
             </form>
-        {% empty %}
-            <p>No sessions available for check-in.</p>
-        {% endfor %}
-    {% endif %}
+        {% endif %}
+    {% empty %}
+        <p>No active sessions for check-in.</p>
+    {% endfor %}
+{% endif %}
 
     <div class="table-responsive">
     <table>
@@ -392,19 +440,31 @@
                         <td>{{ session.course.name }}</td>
                         <td>{{ session.start_time }} - {{ session.end_time }}</td>
                         <td>
-                            {% if attendance %}
-                                <span class="status-badge 
-                                    {% if attendance.status == 'PRESENT' %}status-present
-                                    {% elif attendance.status == 'ABSENT' %}status-absent
-                                    {% elif attendance.status == 'LATE' %}status-late
-                                    {% endif %}">
-                                    {{ attendance.get_status_display }}
-                                </span>
-                            {% elif item.has_checkin %}
-                                <span class="status-badge status-present">Present</span>
+                        
+                            {% if role == 'LECTURER' %}
+                            <span class="status-badge
+                                    {% if item.session_status == 'ACTIVE' %}status-active
+                                    {% elif item.session_status == 'CLOSED' %}status-closed
+                                    {% else %}status-upcoming
+                                    {% endif %}
+                                ">
+                                {{ item.session_status }}
+                            </span>
+                        
                             {% else %}
-                                <span class="status-badge">Not checked in</span>
+                            {% if attendance %}
+                            <span class="status-badge 
+                                        {% if attendance.status == 'present' %}status-present
+                                        {% elif attendance.status == 'absent' %}status-absent
+                                        {% elif attendance.status == 'late' %}status-late
+                                        {% endif %}">
+                                {{ attendance.get_status_display }}
+                            </span>
+                            {% else %}
+                            <span class="status-badge">Not checked in</span>
                             {% endif %}
+                            {% endif %}
+                        
                         </td>
 
                         <td>{{ session.course.lecturer.username }}</td>

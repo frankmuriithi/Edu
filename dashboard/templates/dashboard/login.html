@@ -113,11 +113,16 @@
     <h2>Login</h2>
     
     <div class="login-card">
+        {% if messages %}
+        {% for message in messages %}
+        <p style="color:red;">{{ message }}</p>
+        {% endfor %}
+        {% endif %}
         <form method="post" class="login-form">
             {% csrf_token %}
 
-            <label>Username</label>
-            <input type="text" name="username" required>
+            <label>Email</label>
+            <input type="email" name="email" required>
 
             <label>Password</label>
             <input type="password" name="password" required>

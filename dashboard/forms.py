@@ -9,6 +9,7 @@ from .models import Profile, Attendance, Course, ClassSession, Message, Notifica
 from django import forms
 from .models import Attendance, Course
 from django.contrib.auth.models import User
+from django.utils.text import slugify
 
 
 class ManualCheckinForm(forms.ModelForm):
@@ -22,75 +23,101 @@ class ManualCheckinForm(forms.ModelForm):
         fields = ['student', 'course', 'date', 'time', 'status', 'reason']
 
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)   # ✅ safely extract user
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
         if user:
             self.fields['course'].queryset = Course.objects.filter(lecturer=user)
 
-        # dynamic students based on course
-        if self.data.get('course'):
+        # Always start with empty unless course is selected
+        self.fields['student'].queryset = User.objects.filter(profile__role='STUDENT')
+
+        # If course is selected (POST or initial form edit)
+        course_id = None
+
+        if 'course' in self.data:
+            course_id = self.data.get('course')
+        elif self.initial.get('course'):
+            course_id = self.initial.get('course')
+
+        if course_id:
             try:
-                course_id = int(self.data.get('course'))
-                course = Course.objects.get(id=course_id, lecturer=user)
+                course = Course.objects.get(id=course_id)
                 self.fields['student'].queryset = course.students.all()
-            except:
+            except Course.DoesNotExist:
                 self.fields['student'].queryset = User.objects.none()
-        else:
-            self.fields['student'].queryset = User.objects.none()
+
 
 class RegistrationForm(forms.ModelForm):
-    password = forms.CharField(widget=forms.PasswordInput, label="Password")
-    role = forms.ChoiceField(choices=Profile.ROLE_CHOICES, label="Role")
-
-    registration_number = forms.CharField(
-        max_length=20,
-        required=False,
-        label="Registration Number",
-        help_text="Required for students."
+    full_name = forms.CharField(
+        max_length=150,
+        label="Full Name",
+        help_text="Enter your first and last name (e.g. Jose Kim)"
     )
 
-    staff_number = forms.CharField(
-        max_length=30,
-        required=False,
-        label="Staff Number",
-        help_text="Required for lecturers."
-    )
+    password = forms.CharField(widget=forms.PasswordInput)
+    role = forms.ChoiceField(choices=Profile.ROLE_CHOICES)
+
+    registration_number = forms.CharField(max_length=20, required=False)
+    staff_number = forms.CharField(max_length=30, required=False)
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password']
+        fields = ['full_name', 'email', 'password']
+
+    def clean_full_name(self):
+        name = self.cleaned_data.get('full_name').strip()
+        parts = name.split()
+
+        if len(parts) < 2:
+            raise forms.ValidationError("Enter at least first and last name.")
+
+        return name
 
     def clean(self):
         cleaned_data = super().clean()
-
         role = cleaned_data.get('role')
-        reg_no = cleaned_data.get('registration_number')
-        staff_no = cleaned_data.get('staff_number')
 
-        # ✅ VALIDATION
-        if role == 'STUDENT':
-            if not reg_no:
-                self.add_error('registration_number', "Registration number is required for students.")
-        elif role == 'LECTURER':
-            if not staff_no:
-                self.add_error('staff_number', "Staff number is required for lecturers.")
+        if role == 'STUDENT' and not cleaned_data.get('registration_number'):
+            self.add_error('registration_number', "Required for students.")
+
+        if role == 'LECTURER' and not cleaned_data.get('staff_number'):
+            self.add_error('staff_number', "Required for lecturers.")
 
         return cleaned_data
 
+    def generate_username(self, full_name):
+        base_username = slugify(full_name)  # jose-kim
+        username = base_username
+        counter = 1
+
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}-{counter}"
+            counter += 1
+
+        return username
+
     def save(self, commit=True):
         user = super().save(commit=False)
+
+        full_name = self.cleaned_data['full_name'].strip().split()
+
+        # Split names
+        user.first_name = full_name[0]
+        user.last_name = " ".join(full_name[1:])
+
+        # 🔥 AUTO USERNAME (no spaces, always valid)
+        user.username = self.generate_username(" ".join(full_name))
+
         user.set_password(self.cleaned_data['password'])
 
         if commit:
             user.save()
 
-            profile, created = Profile.objects.get_or_create(user=user)
-
+            profile, _ = Profile.objects.get_or_create(user=user)
             role = self.cleaned_data.get('role')
             profile.role = role
 
-            # ✅ CLEAN ASSIGNMENT
             if role == 'STUDENT':
                 profile.registration_number = self.cleaned_data.get('registration_number')
                 profile.staff_number = None
@@ -99,18 +126,16 @@ class RegistrationForm(forms.ModelForm):
                 profile.staff_number = self.cleaned_data.get('staff_number')
                 profile.registration_number = None
 
-            else:  # ADMIN
+            else:
                 profile.registration_number = None
                 profile.staff_number = None
 
             profile.save()
 
         return user
-    
 
-from django import forms
-from django.contrib.auth import authenticate
-from .models import Profile
+
+
 
 class CustomLoginForm(forms.Form):
     username = forms.CharField()
@@ -181,8 +206,6 @@ class ClassSessionForm(forms.ModelForm):
 
 
 # -------------------------
-# Course Enrollment Form (for Students)
-# Allows students to select and enroll in available courses from the system UI.
 # -------------------------
 class StudentCourseEnrollmentForm(forms.Form):
     courses = forms.ModelMultipleChoiceField(
