@@ -359,7 +359,7 @@
         <p class="card-value">{{ unchecked_sessions|length }}</p>
     </div>
 
-    {% elif role == 'LECTURER' %}
+    {% elif role == 'LECTURER' and lecturer_stats %}
 
     <div class="card">
         <div class="card-icon"><i class="fas fa-percentage"></i></div>
