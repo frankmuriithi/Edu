@@ -1,15 +1,237 @@
 {% extends 'dashboard/base.html' %}
 
-{% block content %}
-  <h2>Search Results for "{{ query }}"</h2>
+{% block page_title %}
+Search Results
+{% endblock %}
 
-  {% if users %}
-    <ul>
-      {% for user in users %}
-        <li>{{ user.username }} - {{ user.email }}</li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p>No results found.</p>
-  {% endif %}
+{% block content %}
+
+<style>
+    /* 🌊 Soft bluish system blend background */
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1f2937;
+        --light: #f9fafb;
+        --gray: #9ca3af;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+   
+
+    .search-header {
+        background: linear-gradient(
+            135deg,
+            var(--primary),
+            rgba(79, 70, 229, 0.75)
+        );
+        color: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: var(--card-shadow);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* soft glow overlay */
+    .search-header::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(
+            circle,
+            rgba(255,255,255,0.15),
+            transparent 60%
+        );
+        transform: rotate(25deg);
+    }
+
+    .search-header h2 {
+        position: relative;
+        z-index: 1;
+    }
+
+    .search-header p {
+        position: relative;
+        z-index: 1;
+        opacity: 0.9;
+    }
+
+    /* soften cards slightly for search context */
+    .search-page .card {
+        background: white;
+        border: 1px solid rgba(79, 70, 229, 0.08);
+    }
+
+    .search-page .card:hover {
+        box-shadow: 0 10px 25px rgba(79, 70, 229, 0.15);
+        transform: translateY(-4px);
+    }
+
+    /* section titles blend */
+    .search-section-title {
+        color: var(--primary);
+        margin: 25px 0 10px;
+        font-weight: 600;
+        position: relative;
+        padding-left: 10px;
+    }
+
+    .search-section-title::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 3px;
+        width: 4px;
+        height: 18px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+
+    .empty-text {
+        color: var(--gray);
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+</style>
+
+<div class="search-page">
+
+    <!-- HEADER -->
+    <div class="search-header">
+        <h2>Search Results</h2>
+        <p>Results for: <strong>"{{ query }}"</strong></p>
+    </div>
+
+    {% if not query %}
+        <div class="card">
+            <p class="empty-text">Please enter a search term.</p>
+        </div>
+    {% else %}
+
+    <!-- USERS -->
+    <h3 class="search-section-title">Users</h3>
+    <div class="dashboard-cards">
+
+        {% if users %}
+            {% for user in users %}
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="card-title">User</div>
+                <div class="card-value" style="font-size:1.1rem;">
+                    {{ user.username }}
+                </div>
+                <div style="color:var(--gray); font-size:0.85rem;">
+                    {{ user.email }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No users found.</p>
+        {% endif %}
+    </div>
+
+    <!-- PROFILES -->
+    <h3 class="search-section-title">Profiles</h3>
+    <div class="dashboard-cards">
+
+        {% if profiles %}
+            {% for profile in profiles %}
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-id-card"></i>
+                </div>
+                <div class="card-title">{{ profile.role }}</div>
+                <div class="card-value">
+                    {{ profile.registration_number|default:profile.staff_number|default:"-" }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No profiles found.</p>
+        {% endif %}
+    </div>
+
+    <!-- COURSES -->
+    <h3 class="search-section-title">Courses</h3>
+    <div class="dashboard-cards">
+
+        {% if courses %}
+            {% for course in courses %}
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="card-title">{{ course.code }}</div>
+                <div class="card-value" style="font-size:1.1rem;">
+                    {{ course.name }}
+                </div>
+                <div style="color:var(--gray); font-size:0.85rem;">
+                    {{ course.lecturer.username }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No courses found.</p>
+        {% endif %}
+    </div>
+
+    <!-- SESSIONS -->
+    <h3 class="search-section-title">Class Sessions</h3>
+    <div class="dashboard-cards">
+
+        {% if sessions %}
+            {% for session in sessions %}
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <div class="card-title">{{ session.course.name }}</div>
+                <div class="card-value" style="font-size:1rem;">
+                    {{ session.location }}
+                </div>
+                <div style="color:var(--gray); font-size:0.85rem;">
+                    {{ session.date }} | {{ session.start_time }} - {{ session.end_time }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No sessions found.</p>
+        {% endif %}
+    </div>
+
+    <!-- ATTENDANCE -->
+    <h3 class="search-section-title">Attendance</h3>
+    <div class="dashboard-cards">
+
+        {% if attendances %}
+            {% for att in attendances %}
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="card-title">{{ att.course.name }}</div>
+                <div class="card-value">{{ att.status|title }}</div>
+                <div style="color:var(--gray); font-size:0.85rem;">
+                    {{ att.student.username }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No attendance records found.</p>
+        {% endif %}
+    </div>
+
+    {% endif %}
+
+</div>
+
 {% endblock %}

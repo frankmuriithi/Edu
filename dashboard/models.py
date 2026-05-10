@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from .validators import min_4_chars
 
 # -------------------------
 # User Profile with Roles
@@ -10,12 +11,26 @@ class Profile(models.Model):
     ROLE_CHOICES = [
         ('STUDENT', 'Student'),
         ('LECTURER', 'Lecturer'),
-        ('ADMIN', 'Administrator'),
     ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    registration_number = models.CharField(max_length=30, unique=True, null=True, blank=True)
-    staff_number = models.CharField(max_length=30, unique=True, null=True, blank=True)  # For lecturers
+
+    registration_number = models.CharField(
+        max_length=30,
+        unique=True,
+        null=True,
+        blank=True,
+        validators=[min_4_chars]
+    )
+
+    staff_number = models.CharField(
+        max_length=30,
+        unique=True,
+        null=True,
+        blank=True,
+        validators=[min_4_chars]
+    )
+
     bio = models.TextField(max_length=500, blank=True)
     location = models.CharField(max_length=30, blank=True)
     birth_date = models.DateField(null=True, blank=True)
@@ -26,7 +41,7 @@ class Profile(models.Model):
         return self.user.username
 
 
-# Automatically create or update profile when User is created or saved
+# Automatically create/update profile
 @receiver(post_save, sender=User)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
@@ -40,16 +55,32 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
 # Course Model
 # -------------------------
 class Course(models.Model):
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=10, unique=True)
+    name = models.CharField(
+        max_length=100,
+        validators=[min_4_chars]
+    )
+
+    code = models.CharField(
+        max_length=10,
+        unique=True,
+        validators=[min_4_chars]
+    )
+
     description = models.TextField(blank=True)
+
     lecturer = models.ForeignKey(
-        User, on_delete=models.CASCADE, null=True, blank=True,
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         limit_choices_to={'profile__role': 'LECTURER'},
         related_name='courses_taught'
     )
+
     students = models.ManyToManyField(
-        User, related_name='courses_enrolled', blank=True,
+        User,
+        related_name='courses_enrolled',
+        blank=True,
         limit_choices_to={'profile__role': 'STUDENT'}
     )
 
@@ -74,12 +105,22 @@ class ClassSession(models.Model):
         return f"{self.course} on {self.date} at {self.start_time}"
 
 
+# -------------------------
+# Attendance Model (FINAL 🔥)
+# -------------------------
 class Attendance(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
         ('late', 'Late'),
         ('absent', 'Absent'),
     ]
+
+    # 🔥 CENTRAL PERFORMANCE LOGIC
+    ATTENDANCE_WEIGHTS = {
+        'present': 1.0,
+        'late': 0.5,
+        'absent': 0.0
+    }
 
     student = models.ForeignKey(User, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
@@ -89,7 +130,6 @@ class Attendance(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES)
     reason = models.TextField(blank=True, null=True)
 
-    # ✅ NEW FIELD
     marked_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -111,6 +151,17 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.course.name} on {self.date}: {self.status}"
+
+    # -------------------------
+    # 🔥 LOGIC METHODS
+    # -------------------------
+    def get_score(self):
+        return self.ATTENDANCE_WEIGHTS.get(self.status, 0)
+
+    def is_attended(self):
+        return self.status in ['present', 'late']
+
+
 # -------------------------
 # Notification Model
 # -------------------------
@@ -136,4 +187,3 @@ class Message(models.Model):
 
     def __str__(self):
         return f'From {self.sender} to {self.recipient} at {self.timestamp}'
-        

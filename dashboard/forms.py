@@ -1,21 +1,23 @@
 from django import forms
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
+from django.utils.text import slugify
+from .validators import min_4_chars
+
 from .models import Profile, Attendance, Course, ClassSession, Message, Notification
 
 
 # -------------------------
 # Manual Check-in Form (for Lecturers)
 # -------------------------
-from django import forms
-from .models import Attendance, Course
-from django.contrib.auth.models import User
-from django.utils.text import slugify
-
-
 class ManualCheckinForm(forms.ModelForm):
     student = forms.ModelChoiceField(
         queryset=User.objects.none(),
         label="Student"
+    )
+    reason = forms.CharField(
+        required=False,
+        validators=[min_4_chars]
     )
 
     class Meta:
@@ -29,10 +31,10 @@ class ManualCheckinForm(forms.ModelForm):
         if user:
             self.fields['course'].queryset = Course.objects.filter(lecturer=user)
 
-        # Always start with empty unless course is selected
+        # Default: all students
         self.fields['student'].queryset = User.objects.filter(profile__role='STUDENT')
 
-        # If course is selected (POST or initial form edit)
+        # Filter students by selected course
         course_id = None
 
         if 'course' in self.data:
@@ -48,19 +50,30 @@ class ManualCheckinForm(forms.ModelForm):
                 self.fields['student'].queryset = User.objects.none()
 
 
+# -------------------------
+# Registration Form
+# -------------------------
 class RegistrationForm(forms.ModelForm):
     full_name = forms.CharField(
         max_length=150,
-        label="Full Name",
-        help_text="Enter your first and last name (e.g. Jose Kim)"
+        validators=[min_4_chars]
     )
 
-    password = forms.CharField(widget=forms.PasswordInput)
-    role = forms.ChoiceField(choices=Profile.ROLE_CHOICES)
+    password = forms.CharField(
+        widget=forms.PasswordInput,
+        min_length=4,
+        validators=[min_4_chars]
+    )
 
-    registration_number = forms.CharField(max_length=20, required=False)
-    staff_number = forms.CharField(max_length=30, required=False)
+    registration_number = forms.CharField(
+        required=False,
+        validators=[min_4_chars]
+    )
 
+    staff_number = forms.CharField(
+        required=False,
+        validators=[min_4_chars]
+    )
     class Meta:
         model = User
         fields = ['full_name', 'email', 'password']
@@ -87,7 +100,7 @@ class RegistrationForm(forms.ModelForm):
         return cleaned_data
 
     def generate_username(self, full_name):
-        base_username = slugify(full_name)  # jose-kim
+        base_username = slugify(full_name)
         username = base_username
         counter = 1
 
@@ -102,13 +115,9 @@ class RegistrationForm(forms.ModelForm):
 
         full_name = self.cleaned_data['full_name'].strip().split()
 
-        # Split names
         user.first_name = full_name[0]
         user.last_name = " ".join(full_name[1:])
-
-        # 🔥 AUTO USERNAME (no spaces, always valid)
         user.username = self.generate_username(" ".join(full_name))
-
         user.set_password(self.cleaned_data['password'])
 
         if commit:
@@ -126,17 +135,14 @@ class RegistrationForm(forms.ModelForm):
                 profile.staff_number = self.cleaned_data.get('staff_number')
                 profile.registration_number = None
 
-            else:
-                profile.registration_number = None
-                profile.staff_number = None
-
             profile.save()
 
         return user
 
 
-
-
+# -------------------------
+# Login Form
+# -------------------------
 class CustomLoginForm(forms.Form):
     username = forms.CharField()
     password = forms.CharField(widget=forms.PasswordInput)
@@ -159,7 +165,6 @@ class CustomLoginForm(forms.Form):
 
         profile = user.profile
 
-        # 🔥 VALIDATION BASED ON ROLE
         if profile.role == 'STUDENT':
             if not reg_no:
                 raise forms.ValidationError("Registration number is required.")
@@ -177,10 +182,10 @@ class CustomLoginForm(forms.Form):
 
     def get_user(self):
         return self.user
-    
-        
+
+
 # -------------------------
-# Class Session Form (for Lecturers)
+# Class Session Form
 # -------------------------
 class ClassSessionForm(forms.ModelForm):
     class Meta:
@@ -198,61 +203,71 @@ class ClassSessionForm(forms.ModelForm):
         try:
             lecturer_courses = Course.objects.filter(lecturer=user)
             self.fields['course'].queryset = lecturer_courses
+
             if not lecturer_courses.exists():
                 self.fields['course'].help_text = "⚠️ You are not assigned to any courses."
+
         except AttributeError:
             self.fields['course'].queryset = Course.objects.none()
             self.fields['course'].help_text = "⚠️ Profile not linked to lecturer."
 
 
 # -------------------------
+# Student Enrollment Form
 # -------------------------
 class StudentCourseEnrollmentForm(forms.Form):
     courses = forms.ModelMultipleChoiceField(
         queryset=Course.objects.all(),
         widget=forms.CheckboxSelectMultiple,
         required=True,
-        label="Select Courses to Enroll In",
-        help_text="Choose one or more courses you want to join."
+        label="Select Courses to Enroll In"
     )
 
     def __init__(self, student, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Only show courses the student is NOT already enrolled in
         already_enrolled = student.courses_enrolled.all()
+
         self.fields['courses'].queryset = Course.objects.exclude(
             id__in=already_enrolled.values_list('id', flat=True)
         )
 
 
 # -------------------------
-# Manage Course Students Form (for Lecturers)
-# Allows lecturers to add or remove students from their courses via the system UI.
+# Manage Course Students Form
 # -------------------------
 class ManageCourseStudentsForm(forms.Form):
     students = forms.ModelMultipleChoiceField(
         queryset=User.objects.none(),
         widget=forms.CheckboxSelectMultiple,
         required=False,
-        label="Enrolled Students",
-        help_text="Check students who should be enrolled in this course. Uncheck to remove them."
+        label="Enrolled Students"
     )
 
     def __init__(self, course, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Show all students in the system
-        all_students = User.objects.filter(profile__role='STUDENT').select_related('profile')
+
+        all_students = User.objects.filter(profile__role='STUDENT')
         self.fields['students'].queryset = all_students
-        # Pre-select currently enrolled students
+
         if not kwargs.get('data'):
             self.fields['students'].initial = course.students.values_list('id', flat=True)
 
 
+# -------------------------
+# Course Form
+# -------------------------
 class CourseForm(forms.ModelForm):
     students = forms.ModelMultipleChoiceField(
         queryset=User.objects.filter(profile__role='STUDENT'),
         widget=forms.SelectMultiple(attrs={'size': 5}),
         required=False
+    )
+    name = forms.CharField(
+        validators=[min_4_chars]
+    )
+
+    code = forms.CharField(
+        validators=[min_4_chars]
     )
 
     class Meta:
@@ -264,10 +279,11 @@ class CourseForm(forms.ModelForm):
 
         if commit:
             course.save()
-            self.save_m2m()  # saves students
+            self.save_m2m()
 
         return course
-    
+
+
 # -------------------------
 # Message Form
 # -------------------------
@@ -294,9 +310,8 @@ class NotificationForm(forms.ModelForm):
 
         if sender:
             role = sender.profile.role
-            if role == 'ADMIN':
-                self.fields['recipient'].queryset = User.objects.exclude(id=sender.id)
-            elif role == 'LECTURER':
+
+            if role == 'LECTURER':
                 self.fields['recipient'].queryset = User.objects.filter(profile__role='STUDENT')
             else:
                 self.fields['recipient'].queryset = User.objects.none()
