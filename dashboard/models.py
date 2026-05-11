@@ -45,11 +45,13 @@ class Profile(models.Model):
 @receiver(post_save, sender=User)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.get_or_create(user=instance)
+        Profile.objects.create(
+            user=instance,
+            role='STUDENT'   # 🔥 ALWAYS SET DEFAULT ROLE
+        )
     else:
         if hasattr(instance, 'profile'):
             instance.profile.save()
-
 
 # -------------------------
 # Course Model
@@ -184,6 +186,8 @@ class Message(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+
+    is_read = models.BooleanField(default=False)
 
     def __str__(self):
         return f'From {self.sender} to {self.recipient} at {self.timestamp}'

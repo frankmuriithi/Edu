@@ -86,8 +86,9 @@ def dashboard(request):
 
         total = records.count()
         weighted_sum = sum(ATTENDANCE_WEIGHTS.get(r.status, 0) for r in records)
-
+        
         overall_attendance = round((weighted_sum / total) * 100) if total else 0
+
 
     # -------------------------
     # LECTURER STATS
@@ -533,9 +534,16 @@ def send_notification(request):
 
 @login_required
 def view_notifications(request):
-    notifications = Notification.objects.filter(recipient=request.user).order_by('-timestamp')
-    return render(request, 'dashboard/view_notifications.html', {'notifications': notifications})
+    notifications = Notification.objects.filter(
+        recipient=request.user
+    ).order_by('-timestamp')
 
+    # ✅ MARK ALL AS READ WHEN PAGE IS OPENED
+    notifications.update(is_read=True)
+
+    return render(request, 'dashboard/view_notifications.html', {
+        'notifications': notifications
+    })
 
 @require_POST
 @login_required
@@ -592,6 +600,8 @@ def reports(request):
                 attendance_data.append({
                     'course': course.name,
                     'session_date': session.date,
+                    'start_time': session.start_time,
+                    'end_time': session.end_time,
                     'students_present': count
                 })
 
@@ -719,15 +729,21 @@ def messages_page(request):
 
 @login_required
 def message_view(request):
-    user_messages = Message.objects.filter(recipient=request.user).order_by('-timestamp')
+    user_messages = Message.objects.filter(
+        recipient=request.user
+    ).order_by('-timestamp')
+
+    # ✅ MARK AS READ
+    user_messages.update(is_read=True)
+
     form = MessageForm()
 
     if request.method == 'POST':
         form = MessageForm(request.POST)
         if form.is_valid():
-            new_message = form.save(commit=False)
-            new_message.sender = request.user
-            new_message.save()
+            msg = form.save(commit=False)
+            msg.sender = request.user
+            msg.save()
             return redirect('messages')
 
     return render(request, 'dashboard/message.html', {

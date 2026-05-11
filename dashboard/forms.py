@@ -17,7 +17,7 @@ class ManualCheckinForm(forms.ModelForm):
     )
     reason = forms.CharField(
         required=False,
-        validators=[min_4_chars]
+        widget=forms.Textarea(attrs={'rows': 2, 'placeholder': 'Optional reason...'})
     )
 
     class Meta:
@@ -49,6 +49,15 @@ class ManualCheckinForm(forms.ModelForm):
             except Course.DoesNotExist:
                 self.fields['student'].queryset = User.objects.none()
 
+    def clean_reason(self):
+        reason = self.cleaned_data.get('reason')
+
+        if reason:  # only validate if user typed something
+            if len(reason.strip()) < 4:
+                raise forms.ValidationError("Reason must be at least 4 characters.")
+
+        return reason            
+
 
 # -------------------------
 # Registration Form
@@ -64,6 +73,10 @@ class RegistrationForm(forms.ModelForm):
         min_length=4,
         validators=[min_4_chars]
     )
+    role = forms.ChoiceField(
+    choices=Profile.ROLE_CHOICES,
+    required=True
+)
 
     registration_number = forms.CharField(
         required=False,

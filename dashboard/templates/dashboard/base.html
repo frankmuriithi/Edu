@@ -252,6 +252,17 @@
             font-size: 0.6rem;
             font-weight: bold;
         }
+        /* ✉️ Message badge (blue pill style) */
+        .message-badge {
+            position: absolute;
+            top: -5px;
+            right: -8px;
+            background-color: #2196F3;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 7px;
+            font-size: 10px;
+        }
 
         .user-dropdown {
             display: flex;
@@ -905,10 +916,16 @@
                     <i class="fas fa-chart-bar"></i>
                     <span>Reports</span>
                 </a>
-                <a href="{% url 'messages' %}" class="menu-item {% if request.resolver_match.url_name == 'messages' %}active{% endif %}">
-                    <i class="fas fa-envelope"></i>
-                    <span>Messages</span>
-                </a>
+                <div class="notification-bell" style="margin-right:20px;">
+                    <a href="{% url 'messages' %}"
+                        class="menu-item {% if request.resolver_match.url_name == 'messages' %}active{% endif %}">
+                        <i class="fas fa-envelope"></i>
+                        {% if unread_messages > 0 %}
+                            <span class="notification-badge">{{ unread_messages }}</span>
+                        {% endif %}
+                        <span>Messages</span>
+                    </a>
+                </div>
                 <a href="{% url 'courses' %}" class="menu-item {% if request.resolver_match.url_name == 'courses' %}active{% endif %}">
                     <i class="fas fa-book"></i>
                     <span>Courses</span>
