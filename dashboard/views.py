@@ -44,30 +44,95 @@ def get_session_status(session):
     else:
         return "ACTIVE"
 
+
 # -------------------------
-# DASHBOARD
+# 🔥 AUTO MARK ABSENT (NEW FIX)
+# -------------------------
+def ensure_attendance_records(user):
+    role = user.profile.role
+    today = localtime(now()).date()
+
+    if role == "STUDENT":
+        sessions = ClassSession.objects.filter(
+            course__students=user,
+            date__lte=today
+        )
+
+        for session in sessions:
+            if get_session_status(session) == "CLOSED":
+                Attendance.objects.get_or_create(
+                    student=user,
+                    session=session,
+                    defaults={
+                        "course": session.course,
+                        "date": session.date,
+                        "time": session.end_time,
+                        "status": "absent",
+                        "marked_by": user
+                    }
+                )
+
+    elif role == "LECTURER":
+        courses = Course.objects.filter(lecturer=user)
+        sessions = ClassSession.objects.filter(course__in=courses, date__lte=today)
+
+        for session in sessions:
+            if get_session_status(session) == "CLOSED":
+                students = session.course.students.all()
+
+                for student in students:
+                    Attendance.objects.get_or_create(
+                        student=student,
+                        session=session,
+                        defaults={
+                            "course": session.course,
+                            "date": session.date,
+                            "time": session.end_time,
+                            "status": "absent",
+                            "marked_by": user
+                        }
+                    )        
+
+# -------------------------
+# DASHBOARD (FINAL FIXED 🔥)
 # -------------------------
 @login_required
 def dashboard(request):
+    ensure_attendance_records(request.user)  # 🔥 keeps absent records correct
+
     today = localtime(now()).date()
     role = request.user.profile.role
 
     if role == 'LECTURER':
-        today_sessions = ClassSession.objects.filter(course__lecturer=request.user, date=today)
+        today_sessions = ClassSession.objects.filter(
+            course__lecturer=request.user,
+            date=today
+        )
     else:
-        today_sessions = ClassSession.objects.filter(course__students=request.user, date=today)
+        today_sessions = ClassSession.objects.filter(
+            course__students=request.user,
+            date=today
+        )
 
     session_data = []
     unchecked_sessions = []
 
+    active_session = None  # 🔥 track current session
+
     for session in today_sessions:
         status = get_session_status(session)
 
+        if status == "ACTIVE":
+            active_session = session  # 🔥 only ONE matters
+
         attendance = None
         if role == 'STUDENT':
-            attendance = Attendance.objects.filter(student=request.user, session=session).first()
+            attendance = Attendance.objects.filter(
+                student=request.user,
+                session=session
+            ).first()
 
-            if status in ["ACTIVE", "CLOSED"] and not attendance:
+            if status == "ACTIVE" and not attendance:
                 unchecked_sessions.append(session)
 
         session_data.append({
@@ -77,62 +142,73 @@ def dashboard(request):
         })
 
     # -------------------------
-    # STUDENT STATS (WEIGHTED)
+    # STUDENT STATS
     # -------------------------
     overall_attendance = 0
+    today_attendance = 0  # 🔥 FIXED WITH WEIGHTS
 
     if role == "STUDENT":
+        # ✅ OVERALL (UNCHANGED)
         records = Attendance.objects.filter(student=request.user)
-
         total = records.count()
-        weighted_sum = sum(ATTENDANCE_WEIGHTS.get(r.status, 0) for r in records)
-        
+        weighted_sum = sum(
+            ATTENDANCE_WEIGHTS.get(r.status, 0) for r in records
+        )
         overall_attendance = round((weighted_sum / total) * 100) if total else 0
 
+        # 🔥 TODAY (USES WEIGHTS)
+        if active_session:
+            attendance = Attendance.objects.filter(
+                student=request.user,
+                session=active_session
+            ).first()
+
+            if attendance:
+                weight = ATTENDANCE_WEIGHTS.get(attendance.status, 0)
+                today_attendance = int(weight * 100)
+            else:
+                # no check-in = absent
+                today_attendance = 0
 
     # -------------------------
     # LECTURER STATS
     # -------------------------
     lecturer_stats = None
 
-    if role == "LECTURER":
-        active_session = today_sessions.filter(
-            date=today
-        ).first()
+    if role == "LECTURER" and active_session:
+        total_students = active_session.course.students.count()
 
-        if active_session:
-            total_students = active_session.course.students.count()
+        checked = Attendance.objects.filter(
+            session=active_session,
+            status__in=ATTENDED_STATUSES
+        ).count()
 
-            checked = Attendance.objects.filter(
-                session=active_session,
-                status__in=ATTENDED_STATUSES
-            ).count()
+        absent = total_students - checked
+        percentage = (checked / total_students) * 100 if total_students else 0
 
-            absent = total_students - checked
-
-            percentage = (checked / total_students) * 100 if total_students else 0
-
-            lecturer_stats = {
-                "attendance_percentage": round(percentage, 2),
-                "checked_in_students": checked,
-                "total_students": total_students,
-                "absent_students": absent
-            }
+        lecturer_stats = {
+            "attendance_percentage": round(percentage, 2),
+            "checked_in_students": checked,
+            "total_students": total_students,
+            "absent_students": absent
+        }
 
     return render(request, 'dashboard/dashboard.html', {
         "session_data": session_data,
         "unchecked_sessions": unchecked_sessions,
         "overall_attendance": overall_attendance,
+        "today_attendance": today_attendance,  # 🔥 FINAL FIX
         "lecturer_stats": lecturer_stats,
         "role": role
     })
 
-
 # -------------------------
-# Attendance List
+# ATTENDANCE LIST
 # -------------------------
 @login_required
 def attendance_list(request):
+    ensure_attendance_records(request.user)  # 🔥 FIX
+
     role = request.user.profile.role
 
     if role == "STUDENT":
@@ -555,10 +631,12 @@ def mark_notification_read(request, notification_id):
 
 
 # -------------------------
-# REPORTS (WEIGHTED 🔥)
+# REPORTS
 # -------------------------
 @login_required
 def reports(request):
+    ensure_attendance_records(request.user)  # 🔥 FIX
+
     role = request.user.profile.role
     attendance_data = []
 
